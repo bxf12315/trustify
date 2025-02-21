@@ -2,10 +2,10 @@ pub use sea_orm_migration::prelude::*;
 
 mod m0000010_init;
 mod m0000020_add_sbom_group;
-mod m0000970_alter_importer_add_heartbeat;
 mod m0000020_create_license_category_enums;
 mod m0000030_create_extracted_licensing_infos;
 mod m0000040_sbom_package_license;
+mod m0000970_alter_importer_add_heartbeat;
 
 #[cfg(feature = "ai")]
 pub mod ai;

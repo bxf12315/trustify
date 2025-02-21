@@ -16,14 +16,14 @@ pub enum Relation {
     PurlAssertions,
 
     #[sea_orm(
-        belongs_to = "super::sbom_packge_license::Entity",
+        belongs_to = "super::sbom_package_license::Entity",
         from = "(Column::Id)",
-        to = "(super::sbom_packge_license::Column::LicenseId)"
+        to = "(super::sbom_package_license::Column::LicenseId)"
     )]
     PackageLicense,
 }
 
-impl Related<super::sbom_packge_license::Entity> for Entity {
+impl Related<super::sbom_package_license::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::PackageLicense.def()
     }

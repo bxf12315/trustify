@@ -4,10 +4,9 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "sbom_package_license")]
 pub struct Model {
     #[sea_orm(primary_key)]
+    pub id: Uuid,
     pub sbom_id: Uuid,
-    #[sea_orm(primary_key)]
     pub node_id: String,
-    #[sea_orm(primary_key)]
     pub license_id: Uuid,
     pub license_type: LicenseCategory,
 }

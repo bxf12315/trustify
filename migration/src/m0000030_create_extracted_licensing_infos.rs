@@ -29,8 +29,7 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(ExtractedLicensingInfos::SbomId)
                             .uuid()
-                            .not_null()
-                            .primary_key(),
+                            .not_null(),
                     )
                     .col(ColumnDef::new(ExtractedLicensingInfos::ExtractedText).string())
                     .col(ColumnDef::new(ExtractedLicensingInfos::Comment).string())
