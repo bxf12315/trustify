@@ -32,6 +32,19 @@ pub enum Relation {
         to = "(super::sbom_package_cpe_ref::Column::SbomId, super::sbom_package_cpe_ref::Column::NodeId)"
     )]
     Cpe,
+
+    #[sea_orm(
+        belongs_to = "super::sbom_packge_license::Entity",
+        from = "(Column::SbomId, Column::NodeId)",
+        to = "(super::sbom_packge_license::Column::SbomId, super::sbom_packge_license::Column::NodeId)"
+    )]
+    PackageLicense,
+}
+
+impl Related<super::sbom_packge_license::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::PackageLicense.def()
+    }
 }
 
 impl Related<super::sbom_node::Entity> for Entity {

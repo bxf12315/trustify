@@ -333,6 +333,9 @@ impl<'a> ComponentCreator<'a> {
             comp.version.as_ref().map(|v| v.to_string()),
             self.refs,
             self.license_relations,
+            None,
+            None,
+            Some(self.licenses.clone()),
         );
 
         for ancestor in comp

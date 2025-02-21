@@ -116,6 +116,9 @@ mod m0000960_sort_indexes_qualified_purl;
 
 #[cfg(feature = "ai")]
 pub mod ai;
+mod m0000015_create_license_category_enums;
+mod m0000035_create_extracted_licensing_infos;
+mod m0000570_sbom_package_license;
 
 pub struct Migrator;
 
