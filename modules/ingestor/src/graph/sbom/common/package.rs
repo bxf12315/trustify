@@ -5,8 +5,8 @@ use sea_query::OnConflict;
 use tracing::instrument;
 use trustify_common::db::chunk::EntityChunkedIter;
 use trustify_entity::{
-    cpe_license_assertion, purl_license_assertion, sbom_node, sbom_package, sbom_package_cpe_ref,
-    sbom_package_purl_ref, sbom_packge_license,
+    cpe_license_assertion, purl_license_assertion, sbom_package, sbom_package_cpe_ref,
+    sbom_package_license, sbom_package_purl_ref,
 };
 use uuid::Uuid;
 
@@ -19,7 +19,7 @@ pub struct PackageCreator {
     pub(crate) cpe_refs: Vec<sbom_package_cpe_ref::ActiveModel>,
     purl_license_assertions: Vec<purl_license_assertion::ActiveModel>,
     cpe_license_assertions: Vec<cpe_license_assertion::ActiveModel>,
-    sbom_packge_licenses: Vec<sbom_packge_license::ActiveModel>,
+    sbom_packge_licenses: Vec<sbom_package_license::ActiveModel>,
 }
 
 pub struct NodeInfoParam {
@@ -76,7 +76,7 @@ impl PackageCreator {
     ) where
         I: IntoIterator<Item = C>,
         C: Into<Checksum>,
-     {
+    {
         for r#ref in refs {
             match r#ref {
                 PackageReference::Cpe(cpe) => {
@@ -129,32 +129,35 @@ impl PackageCreator {
 
         if let Some(declared) = declared_licenses {
             self.sbom_packge_licenses
-                .push(sbom_packge_license::ActiveModel {
+                .push(sbom_package_license::ActiveModel {
+                    id: Default::default(),
                     sbom_id: Set(self.sbom_id),
                     node_id: Set(node_info.node_id.clone()),
                     license_id: Set(declared.uuid()),
-                    license_type: Set(sbom_packge_license::LicenseCategory::SpdxDeclared),
+                    license_type: Set(sbom_package_license::LicenseCategory::SpdxDeclared),
                 });
         }
 
         if let Some(concluded) = concluded_licenses {
             self.sbom_packge_licenses
-                .push(sbom_packge_license::ActiveModel {
+                .push(sbom_package_license::ActiveModel {
+                    id: Default::default(),
                     sbom_id: Set(self.sbom_id),
                     node_id: Set(node_info.node_id.clone()),
                     license_id: Set(concluded.uuid()),
-                    license_type: Set(sbom_packge_license::LicenseCategory::SpdxConcluded),
+                    license_type: Set(sbom_package_license::LicenseCategory::SpdxConcluded),
                 });
         }
 
         if let Some(cyclonedx) = cyclonedx_licenses {
             for (uuid, _v) in cyclonedx.licenses {
                 self.sbom_packge_licenses
-                    .push(sbom_packge_license::ActiveModel {
+                    .push(sbom_package_license::ActiveModel {
+                        id: Default::default(),
                         sbom_id: Set(self.sbom_id),
                         node_id: Set(node_info.node_id.clone()),
                         license_id: Set(uuid),
-                        license_type: Set(sbom_packge_license::LicenseCategory::Other),
+                        license_type: Set(sbom_package_license::LicenseCategory::Other),
                     });
             }
         }
@@ -252,17 +255,17 @@ impl PackageCreator {
         }
 
         for batch in &self.sbom_packge_licenses.into_iter().chunked() {
-            sbom_packge_license::Entity::insert_many(batch)
-                .on_conflict(
-                    OnConflict::columns([
-                        sbom_packge_license::Column::SbomId,
-                        sbom_packge_license::Column::NodeId,
-                        sbom_packge_license::Column::LicenseId,
-                        sbom_packge_license::Column::LicenseType,
-                    ])
-                    .do_nothing()
-                    .to_owned(),
-                )
+            sbom_package_license::Entity::insert_many(batch)
+                // .on_conflict(
+                //     OnConflict::columns([
+                //         sbom_packge_license::Column::SbomId,
+                //         sbom_packge_license::Column::NodeId,
+                //         sbom_packge_license::Column::LicenseId,
+                //         sbom_packge_license::Column::LicenseType,
+                //     ])
+                //     .do_nothing()
+                //     .to_owned(),
+                // )
                 .do_nothing()
                 .exec(db)
                 .await?;
