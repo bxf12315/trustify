@@ -118,7 +118,7 @@ mod m0000960_sort_indexes_qualified_purl;
 pub mod ai;
 mod m0000015_create_license_category_enums;
 mod m0000035_create_extracted_licensing_infos;
-mod m0000570_sbom_package_license;
+mod m0000572_sbom_package_license;
 
 pub struct Migrator;
 
@@ -136,6 +136,7 @@ impl MigratorTrait for Migrator {
             Box::new(m0000070_create_cvss3::Migration),
             Box::new(m0000080_create_cvss4::Migration),
             Box::new(m0000090_create_advisory_vulnerability::Migration),
+            Box::new(m0000015_create_license_category_enums::Migration),
             Box::new(m0000100_create_package::Migration),
             Box::new(m0000110_create_cpe::Migration),
             Box::new(m0000120_create_package_version::Migration),
@@ -238,6 +239,8 @@ impl MigratorTrait for Migrator {
             Box::new(m0000940_perf_indexes_qualified_purl::Migration),
             Box::new(m0000950_inserts_version_scheme::Migration),
             Box::new(m0000960_sort_indexes_qualified_purl::Migration),
+            Box::new(m0000035_create_extracted_licensing_infos::Migration),
+            Box::new(m0000572_sbom_package_license::Migration),
         ]
     }
 }

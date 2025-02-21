@@ -1,4 +1,5 @@
 use crate::m0000015_create_license_category_enums::LicenseCategory;
+use crate::UuidV4;
 use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
@@ -12,18 +13,23 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(SbomPackageLicense::Table)
                     .col(
-                        ColumnDef::new(SbomPackageLicense::SbomId)
+                        ColumnDef::new(SbomPackageLicense::Id)
                             .uuid()
                             .not_null()
+                            .default(Func::cust(UuidV4))
                             .primary_key(),
                     )
+                    .col(ColumnDef::new(SbomPackageLicense::SbomId).uuid().not_null())
                     .col(
                         ColumnDef::new(SbomPackageLicense::LicenseId)
                             .uuid()
-                            .not_null()
-                            .primary_key(),
+                            .not_null(),
                     )
-                    .col(ColumnDef::new(SbomPackageLicense::NodeId).uuid().not_null())
+                    .col(
+                        ColumnDef::new(SbomPackageLicense::NodeId)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(SbomPackageLicense::LicenseType).enumeration(
                         LicenseCategory::LicenseCategory,
                         [
@@ -49,6 +55,7 @@ impl MigrationTrait for Migration {
 #[derive(DeriveIden)]
 pub enum SbomPackageLicense {
     Table,
+    Id,
     SbomId,
     NodeId,
     LicenseId,
