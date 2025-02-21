@@ -1,12 +1,12 @@
-use crate::graph::sbom::{ExtractedLicensingInfoCreator, ExtratedLicensingInfo};
 use crate::{
     graph::{
         cpe::CpeCreator,
         product::ProductInformation,
         purl::creator::PurlCreator,
         sbom::{
-            FileCreator, LicenseCreator, LicenseInfo, NodeInfoParam, PackageCreator,
-            PackageReference, References, RelationshipCreator, SbomContext, SbomInformation, Spdx,
+            ExtractedLicensingInfoCreator, ExtratedLicensingInfo, FileCreator, LicenseCreator,
+            LicenseInfo, PackageCreator, PackageReference, References, RelationshipCreator,NodeInfoParam,
+            SbomContext, SbomInformation, Spdx,
             processor::{
                 InitContext, PostContext, Processor, RedHatProductComponentRelationships,
                 RunProcessors,
