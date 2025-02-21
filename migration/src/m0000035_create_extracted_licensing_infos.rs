@@ -33,6 +33,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(ExtractedLicensingInfos::ExtractedText).string())
                     .col(ColumnDef::new(ExtractedLicensingInfos::Comment).string())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .from_col(ExtractedLicensingInfos::SbomId)
+                            .to(Sbom::Table, Sbom::SbomId)
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -60,4 +66,10 @@ pub enum ExtractedLicensingInfos {
     LicenseId,
     ExtractedText,
     Comment,
+}
+
+#[derive(DeriveIden)]
+pub enum Sbom {
+    Table,
+    SbomId,
 }
