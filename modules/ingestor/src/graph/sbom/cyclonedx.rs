@@ -398,6 +398,9 @@ impl<'a> ComponentCreator<'a> {
             self.refs,
             self.license_relations,
             comp.hashes.clone().into_iter().flatten(),
+            None,
+            None,
+            Some(self.licenses.clone()),
         );
 
         for ancestor in comp
