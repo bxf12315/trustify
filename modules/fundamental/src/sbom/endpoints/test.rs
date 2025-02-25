@@ -5,6 +5,7 @@ use crate::{
 use actix_http::StatusCode;
 use actix_web::test::TestRequest;
 use serde_json::{json, Value};
+use std::io::Read;
 use test_context::test_context;
 use test_log::test;
 use trustify_common::{id::Id, model::PaginatedResults};
@@ -267,6 +268,38 @@ async fn query_sboms_by_ingested_time(ctx: &TrustifyContext) -> Result<(), anyho
     assert_eq!(ubi["items"][0]["name"], json!("ubi9-container"));
     assert_eq!(zoo["total"], 1);
     assert_eq!(zoo["items"][0]["name"], json!("zookeeper"));
+
+    Ok(())
+}
+
+#[test_context(TrustifyContext)]
+#[test(actix_web::test)]
+async fn export_license(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
+    let id = ctx
+        .ingest_documents(["quarkus-bom-2.13.8.Final-redhat-00004.json"])
+        .await?[0]
+        .id
+        .to_string();
+
+    let app = caller(ctx).await?;
+    let data = app
+        .call_and_read_body(
+            TestRequest::get()
+                .uri(&format!("/api/v2/sbom/{id}/license.zip"))
+                .to_request(),
+        )
+        .await;
+
+    // data should be a zip file
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(data))?;
+    assert_eq!(1, zip.len());
+    let mut file = zip.by_index(0)?;
+    assert_eq!("licenses.csv", file.name());
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
+
+    log::debug!("{content}");
+    // TODO: add more assertions against the content.
 
     Ok(())
 }

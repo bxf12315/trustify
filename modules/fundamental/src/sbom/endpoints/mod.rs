@@ -22,6 +22,9 @@ use config::Config;
 use futures_util::TryStreamExt;
 use sea_orm::{prelude::Uuid, TransactionTrait};
 use std::str::FromStr;
+use zip::write::FileOptions;
+use zip::ZipWriter;
+
 use trustify_auth::{
     all,
     authenticator::user::UserInformation,
@@ -60,6 +63,7 @@ pub fn configure(
         .service(get)
         .service(get_sbom_advisories)
         .service(delete)
+        .service(license_zip)
         .service(packages)
         .service(related)
         .service(upload)
@@ -427,4 +431,49 @@ pub async fn download(
     } else {
         Ok(HttpResponse::NotFound().finish())
     }
+}
+
+#[utoipa::path(
+    tag = "sbom",
+    operation_id = "licenseZip",
+    params(
+        ("id" = String, Path, description = "Digest/hash of the document, prefixed by hash type, such as 'sha256:<hash>' or 'urn:uuid:<uuid>'"),
+    ),
+    responses(
+        (status = 200, description = "license zip file", body = Vec<u8>),
+        (status = 404, description = "The document could not be found"),
+    ),
+)]
+#[get("/v2/sbom/{id}/license.zip")]
+pub async fn license_zip(
+    fetcher: web::Data<SbomService>,
+    db: web::Data<Database>,
+    id: web::Path<String>,
+    _: Require<ReadSbom>,
+) -> actix_web::Result<impl Responder> {
+    let id = Id::from_str(&id).map_err(Error::IdKey)?;
+
+    let result = fetcher.license_export(id, db.as_ref()).await?;
+
+    let mut buffer = Vec::new();
+    let mut zip_file = ZipWriter::new(std::io::Cursor::new(&mut buffer));
+
+    let options: FileOptions<()> =
+        FileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    zip_file
+        .start_file("licenses.csv", options)
+        .map_err(|x| Internal(x.to_string()))?;
+    {
+        let mut csv_writer = csv::Writer::from_writer(&mut zip_file);
+        for row in result {
+            csv_writer
+                .serialize(row)
+                .map_err(|x| Internal(x.to_string()))?;
+        }
+    }
+    zip_file.finish().map_err(|x| Internal(x.to_string()))?;
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/zip")
+        .body(buffer.clone()))
 }

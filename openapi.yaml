@@ -1646,6 +1646,31 @@ paths:
           description: Modified the labels of the SBOM
         '404':
           description: The SBOM could not be found
+  /api/v2/sbom/{id}/license.zip:
+    get:
+      tags:
+      - sbom
+      operationId: licenseZip
+      parameters:
+      - name: id
+        in: path
+        description: Digest/hash of the document, prefixed by hash type, such as 'sha256:<hash>' or 'urn:uuid:<uuid>'
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: license zip file
+          content:
+            application/octet-stream:
+              schema:
+                type: array
+                items:
+                  type: integer
+                  format: int32
+                  minimum: 0
+        '404':
+          description: The document could not be found
   /api/v2/sbom/{id}/packages:
     get:
       tags:
