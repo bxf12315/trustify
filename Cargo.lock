@@ -8606,6 +8606,7 @@ dependencies = [
  "cpe",
  "criterion",
  "csaf",
+ "csv",
  "cve",
  "futures-util",
  "hex",

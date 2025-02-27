@@ -5,7 +5,7 @@ use crate::{
     purl::model::summary::purl::PurlSummary, source_document::model::SourceDocument, Error,
 };
 use async_graphql::SimpleObject;
-use sea_orm::{prelude::Uuid, ConnectionTrait, ModelTrait, PaginatorTrait};
+use sea_orm::{prelude::Uuid, ConnectionTrait, FromQueryResult, ModelTrait, PaginatorTrait};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use trustify_common::{cpe::Cpe, model::Paginated, purl::Purl};
@@ -168,4 +168,17 @@ pub enum Which {
     Left,
     /// Target side
     Right,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, FromQueryResult)]
+pub struct SbomPackageLicenseBase {
+    pub sbom_name: Option<String>,
+    pub sbom_namespace: Option<String>,
+    pub component_group: Option<String>,
+    pub component_version: Option<String>,
+    pub node_id: String,
+    pub sbom_id: Uuid,
+    pub package_name: String,
+    pub version: String,
+    pub license_text: Option<String>,
 }

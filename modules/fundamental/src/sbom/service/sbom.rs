@@ -1,4 +1,5 @@
 use super::SbomService;
+use crate::sbom::model::SbomPackageLicenseBase;
 use crate::{
     purl::model::summary::purl::PurlSummary,
     sbom::model::{
@@ -33,12 +34,12 @@ use trustify_entity::{
     advisory, base_purl,
     cpe::{self, CpeDto},
     labels::Labels,
-    package_relates_to_package,
+    license, package_relates_to_package,
     qualified_purl::{self, CanonicalPurl, Qualifiers},
     relationship::Relationship,
     sbom::{self, SbomNodeLink},
-    sbom_node, sbom_package, sbom_package_cpe_ref, sbom_package_purl_ref, source_document, status,
-    versioned_purl, vulnerability,
+    sbom_node, sbom_package, sbom_package_cpe_ref, sbom_package_license, sbom_package_purl_ref,
+    source_document, status, versioned_purl, vulnerability,
 };
 
 impl SbomService {
@@ -478,6 +479,37 @@ impl SbomService {
         // take the de-duplicated values and return them
 
         Ok(result.into_values().collect())
+    }
+
+    pub async fn license_export<C: ConnectionTrait>(
+        &self,
+        id: Id,
+        connection: &C,
+    ) -> Result<Vec<SbomPackageLicenseBase>, Error> {
+        let sbom_license_base: Vec<SbomPackageLicenseBase> = sbom::Entity::find()
+            .try_filter(id)?
+            .join(JoinType::LeftJoin, sbom::Relation::Packages.def())
+            .join(JoinType::Join, sbom_package::Relation::Node.def())
+            .join(
+                JoinType::LeftJoin,
+                sbom_package::Relation::PackageLicense.def(),
+            )
+            .join(
+                JoinType::LeftJoin,
+                sbom_package_license::Relation::License.def(),
+            )
+            .select_only()
+            .column_as(sbom::Column::SbomId, "sbom_id")
+            .column_as(sbom::Column::DocumentId, "sbom_namespace")
+            .column_as(sbom_package::Column::NodeId, "node_id")
+            .column_as(sbom_package::Column::Version, "version")
+            .column_as(sbom_node::Column::Name, "package_name")
+            .column_as(license::Column::Text, "license_text")
+            .into_model::<SbomPackageLicenseBase>()
+            .all(connection)
+            .await?;
+
+        Ok(sbom_license_base)
     }
 }
 

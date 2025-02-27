@@ -25,6 +25,7 @@ async-graphql = { workspace = true, features = ["uuid", "time"] }
 async-trait = { workspace = true }
 base64 = { workspace = true }
 cpe = { workspace = true }
+csv = { workspace = true }
 futures-util = { workspace = true }
 itertools = { workspace = true }
 lenient_semver = { workspace = true }
@@ -44,6 +45,7 @@ tracing = { workspace = true }
 utoipa = { workspace = true, features = ["actix_extras", "uuid", "time"] }
 utoipa-actix-web = { workspace = true }
 uuid = { workspace = true }
+zip = { workspace = true }
 
 [dev-dependencies]
 actix-http = { workspace = true }
