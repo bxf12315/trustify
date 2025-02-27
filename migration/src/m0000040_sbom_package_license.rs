@@ -1,6 +1,7 @@
 use crate::UuidV4;
 use crate::m0000020_create_license_category_enums::LicenseCategory;
 use sea_orm_migration::prelude::*;
+use crate::m0000035_create_extracted_licensing_infos::ExtractedLicensingInfos;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -38,6 +39,17 @@ impl MigrationTrait for Migration {
                             LicenseCategory::O,
                         ],
                     ))
+                    .foreign_key(
+                        ForeignKey::create()
+                            .from_col(ExtractedLicensingInfos::SbomId)
+                            .to(Sbom::Table, Sbom::SbomId)
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .from_col(ExtractedLicensingInfos::LicenseId)
+                            .to(License::Table, License::Id),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -61,3 +73,16 @@ pub enum SbomPackageLicense {
     LicenseId,
     LicenseType,
 }
+
+#[derive(DeriveIden)]
+pub enum Sbom {
+    Table,
+    SbomId,
+}
+
+#[derive(DeriveIden)]
+pub enum License {
+    Table,
+    Id,
+}
+
