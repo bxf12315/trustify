@@ -143,8 +143,8 @@ impl SbomContext {
         for license_ref in sbom_data.other_licensing_information_detected.clone() {
             let extracted_licensing_info = &LicensingInfo::with_sbom_id(
                 self.sbom.sbom_id,
-                license_ref.license_identifier.clone(),
                 license_ref.license_name,
+                license_ref.license_identifier.clone(),
                 license_ref.extracted_text,
                 license_ref.license_comment,
             );

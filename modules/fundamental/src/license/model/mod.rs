@@ -1,3 +1,5 @@
+pub mod sbom_license;
+
 use crate::{Error, purl::model::VersionedPurlHead, sbom::model::SbomHead};
 use sea_orm::{ConnectionTrait, ModelTrait, PaginatorTrait};
 use serde::{Deserialize, Serialize};
