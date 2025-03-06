@@ -1,3 +1,5 @@
+use crate::license::get_sanitize_filename;
+use crate::license::service::license_export::LicenseExporter;
 use crate::{
     Error,
     license::{
@@ -10,7 +12,7 @@ use actix_web::{HttpResponse, Responder, get, web};
 use std::str::FromStr;
 use trustify_common::{
     db::{Database, query::Query},
-    id::IdError,
+    id::{Id, IdError},
     model::{Paginated, PaginatedResults},
 };
 use uuid::Uuid;
@@ -26,7 +28,8 @@ pub fn configure(config: &mut utoipa_actix_web::service_config::ServiceConfig, d
         .service(get_spdx_license)
         .service(list_licenses)
         .service(get_license)
-        .service(get_license_purls);
+        .service(get_license_purls)
+        .service(license_zip);
 }
 
 #[utoipa::path(
@@ -89,5 +92,48 @@ pub async fn get_license_purls(
     Ok(HttpResponse::Ok().json(state.get_license_purls(uuid, search, paginated).await?))
 }
 
+#[utoipa::path(
+    tag = "sbom",
+    operation_id = "licenseZip",
+    params(
+        ("id" = String, Path, description = "Digest/hash of the document, prefixed by hash type, such as 'sha256:<hash>' or 'urn:uuid:<uuid>'"),
+    ),
+    responses(
+    (status = 200, description = "license zip file", body = Vec<u8>),
+    (status = 404, description = "The document could not be found"),
+    ),
+)]
+#[get("/v2/sbom/{id}/license.zip")]
+pub async fn license_zip(
+    fetcher: web::Data<LicenseService>,
+    db: web::Data<Database>,
+    id: web::Path<String>,
+) -> actix_web::Result<impl Responder> {
+    let id = Id::from_str(&id).map_err(Error::IdKey)?;
+
+    let (sbom_license_list, sbom_license_info_list, sbom_name) =
+        fetcher.license_export(id, db.as_ref()).await?;
+    if let Some(name) = sbom_name.clone() {
+        let exporter = LicenseExporter::new(
+            name.sbom_name.clone(),
+            sbom_license_list,
+            sbom_license_info_list,
+        );
+        let zip = exporter.generate()?;
+
+        Ok(HttpResponse::Ok()
+            .content_type("application/gzip")
+            .append_header((
+                "Content-Disposition",
+                format!(
+                    "attachment; filename=\"{}_licenses.tar.gz\"",
+                    get_sanitize_filename(name.sbom_name.clone())
+                ),
+            ))
+            .body(zip))
+    } else {
+        Ok(HttpResponse::NotFound().into())
+    }
+}
 #[cfg(test)]
 mod test;
