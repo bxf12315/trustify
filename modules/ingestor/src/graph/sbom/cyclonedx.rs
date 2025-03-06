@@ -396,7 +396,6 @@ impl<'a> ComponentCreator<'a> {
                 cyclonedx_licenses: Some(self.licenses.clone()),
             },
             self.refs,
-            self.license_relations,
             comp.hashes.clone().into_iter().flatten(),
         );
 
