@@ -164,14 +164,14 @@ impl SbomContext {
             });
 
             let mut refs = Vec::new();
-            let mut license_refs = Vec::new();
+            // let mut license_refs = Vec::new();
             let mut declared_license_ref = None;
             let mut concluded_license_ref = None;
             if let Some(declared_license) = declared_license_info {
                 if declared_license.license != "NOASSERTION" {
                     let _ = declared_license_ref.insert(declared_license.clone());
                     licenses.add(&declared_license);
-                    license_refs.push(declared_license);
+                    // license_refs.push(declared_license);
                 }
             }
 
@@ -179,7 +179,7 @@ impl SbomContext {
                 if concluded_license.license != "NOASSERTION" {
                     let _ = concluded_license_ref.insert(concluded_license.clone());
                     licenses.add(&concluded_license);
-                    license_refs.push(concluded_license);
+                    // license_refs.push(concluded_license);
                 }
             }
 
@@ -247,7 +247,7 @@ impl SbomContext {
                     cyclonedx_licenses: None,
                 },
                 refs,
-                license_refs,
+                // license_refs,
                 package.package_checksum,
             );
         }
