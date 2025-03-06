@@ -36,7 +36,8 @@ use tracing::instrument;
 use trustify_common::{cpe::Cpe, hashing::Digests, purl::Purl, sbom::SbomLocator};
 use trustify_entity::{
     self as entity, labels::Labels, license, relationship::Relationship, sbom, sbom_node,
-    sbom_package, sbom_package_cpe_ref, sbom_package_purl_ref, source_document,
+    sbom_package, sbom_package_cpe_ref, sbom_package_license, sbom_package_purl_ref,
+    source_document,
 };
 
 #[derive(Clone, Default)]
@@ -430,7 +431,7 @@ impl SbomContext {
             .one(connection)
             .await?;
 
-        let _license = if let Some(license) = license {
+        let license = if let Some(license) = license {
             license
         } else {
             license::ActiveModel {
@@ -450,6 +451,29 @@ impl SbomContext {
             .insert(connection)
             .await?
         };
+
+        // let assertion = sbom_package_license::Entity::find()
+        //     .filter(sbom_package_license::Column::LicenseId.eq(license.id))
+        //     .filter(
+        //         purl_license_assertion::Column::VersionedPurlId
+        //             .eq(purl.package_version.package_version.id),
+        //     )
+        //     .filter(purl_license_assertion::Column::SbomId.eq(self.sbom.sbom_id))
+        //     .one(connection)
+        //     .await?;
+        // sbom_id: Set(self.sbom_id),
+        // node_id: Set(node_info.node_id.clone()),
+        // license_id: Set(declared.uuid()),
+        // license_type: Set(sbom_package_license::LicenseCategory::Declared),
+
+        sbom_package_license::ActiveModel {
+            sbom_id: Set(self.sbom.sbom_id),
+            node_id: Set(self.sbom.node_id.clone()),
+            license_id: Set(license.id),
+            license_type: Set(sbom_package_license::LicenseCategory::Declared),
+        }
+        .insert(connection)
+        .await?;
 
         Ok(())
     }
