@@ -10,6 +10,8 @@ mod m0000970_alter_importer_add_heartbeat;
 pub mod ai;
 #[cfg(feature = "ai")]
 mod ai_m0000010_create_conversation;
+mod m0000050_drop_purl_license_assertion;
+mod m0000060_drop_cpe_license_assertion;
 
 pub struct Migrator;
 
@@ -22,6 +24,8 @@ impl MigratorTrait for Migrator {
             Box::new(m0000040_sbom_package_license::Migration),
             Box::new(m0000970_alter_importer_add_heartbeat::Migration),
             Box::new(m0000020_add_sbom_group::Migration),
+            Box::new(m0000050_drop_purl_license_assertion::Migration),
+            Box::new(m0000060_drop_cpe_license_assertion::Migration),
         ]
     }
 }
