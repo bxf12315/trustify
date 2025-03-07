@@ -124,14 +124,14 @@ impl LicenseExporter {
             let alternate_package_reference = package
                 .other_reference
                 .iter()
-                .map(|reference| format!("{:?}", reference))
+                .map(|reference| format!("{}", reference))
                 .collect::<Vec<_>>()
                 .join("\n");
 
             let purl_list = package
                 .purl
                 .iter()
-                .map(|p| format!("{:?}", p))
+                .map(|p| format!("{}", p.purl))
                 .collect::<Vec<_>>()
                 .join("\n");
 
