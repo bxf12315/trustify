@@ -24,7 +24,7 @@ pub fn configure(config: &mut utoipa_actix_web::service_config::ServiceConfig, d
         // .service(list_licenses)
         // .service(get_license)
         // .service(get_license_purls)
-        .service(license_zip);
+        .service(get_license_export);
 }
 
 // #[utoipa::path(
@@ -89,7 +89,7 @@ pub fn configure(config: &mut utoipa_actix_web::service_config::ServiceConfig, d
 
 #[utoipa::path(
     tag = "sbom",
-    operation_id = "licenseZip",
+    operation_id = "getLicenseExport",
     params(
         ("id" = String, Path, description = "Digest/hash of the document, prefixed by hash type, such as 'sha256:<hash>' or 'urn:uuid:<uuid>'"),
     ),
@@ -98,8 +98,8 @@ pub fn configure(config: &mut utoipa_actix_web::service_config::ServiceConfig, d
     (status = 404, description = "The document could not be found"),
     ),
 )]
-#[get("/v2/sbom/{id}/license.zip")]
-pub async fn license_zip(
+#[get("/v2/sbom/{id}/license-export")]
+pub async fn get_license_export(
     fetcher: web::Data<LicenseService>,
     db: web::Data<Database>,
     id: web::Path<String>,
