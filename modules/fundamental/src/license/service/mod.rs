@@ -3,8 +3,7 @@ use crate::{
     license::model::{
         SpdxLicenseDetails, SpdxLicenseSummary,
         sbom_license::{
-            CpeParam, ExtractedLicensingInfos, Purl, SbomName, SbomPackageLicense,
-            SbomPackageLicenseBase,
+            ExtractedLicensingInfos, Purl, SbomName, SbomPackageLicense, SbomPackageLicenseBase,
         },
     },
 };
@@ -95,7 +94,7 @@ impl LicenseService {
                 .into_model::<Purl>()
                 .all(connection)
                 .await?;
-            let result_cpe: Vec<CpeParam> = sbom_package_cpe_ref::Entity::find()
+            let result_cpe: Vec<trustify_entity::cpe::Model> = sbom_package_cpe_ref::Entity::find()
                 .join(JoinType::Join, sbom_package_cpe_ref::Relation::Cpe.def())
                 .filter(
                     Condition::all()
@@ -103,6 +102,7 @@ impl LicenseService {
                         .add(sbom_package_cpe_ref::Column::SbomId.eq(spl.sbom_id)),
                 )
                 .select_only()
+                .column_as(trustify_entity::cpe::Column::Id, "id")
                 .column_as(trustify_entity::cpe::Column::Part, "cpe")
                 .column_as(trustify_entity::cpe::Column::Vendor, "vendor")
                 .column_as(trustify_entity::cpe::Column::Product, "product")
@@ -110,7 +110,7 @@ impl LicenseService {
                 .column_as(trustify_entity::cpe::Column::Update, "update")
                 .column_as(trustify_entity::cpe::Column::Edition, "edition")
                 .column_as(trustify_entity::cpe::Column::Language, "language")
-                .into_model::<CpeParam>()
+                .into_model::<trustify_entity::cpe::Model>()
                 .all(connection)
                 .await?;
 
