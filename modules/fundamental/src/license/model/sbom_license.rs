@@ -13,7 +13,7 @@ pub struct SbomPackageLicense {
     pub group: Option<String>,
     /// package package URL
     pub purl: Vec<Purl>,
-    pub other_reference: Vec<CpeParam>,
+    pub other_reference: Vec<trustify_entity::cpe::Model>,
     /// List of all package license
     pub license_text: Option<String>,
 }
@@ -28,17 +28,6 @@ pub struct Sbom {
 #[derive(Debug, Clone, FromQueryResult)]
 pub struct Purl {
     pub purl: CanonicalPurl,
-}
-
-#[derive(Debug, Clone, FromQueryResult)]
-pub struct CpeParam {
-    pub part: Option<String>,
-    pub vendor: Option<String>,
-    pub product: Option<String>,
-    pub version: Option<String>,
-    pub update: Option<String>,
-    pub edition: Option<String>,
-    pub language: Option<String>,
 }
 
 #[derive(Debug, Clone, FromQueryResult)]
