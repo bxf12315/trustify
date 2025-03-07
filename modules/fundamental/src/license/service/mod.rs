@@ -3,7 +3,8 @@ use crate::{
     license::model::{
         SpdxLicenseDetails, SpdxLicenseSummary,
         sbom_license::{
-            ExtractedLicensingInfos, Purl, SbomName, SbomPackageLicense, SbomPackageLicenseBase,
+            ExtractedLicensingInfos, Purl, SbomNameGroupVersion, SbomPackageLicense,
+            SbomPackageLicenseBase,
         },
     },
 };
@@ -20,8 +21,8 @@ use trustify_common::{
     model::{Paginated, PaginatedResults},
 };
 use trustify_entity::{
-    license, licensing_infos, qualified_purl, sbom, sbom_node, sbom_package, sbom_package_cpe_ref,
-    sbom_package_license, sbom_package_purl_ref,
+    license, licensing_infos, package_relates_to_package, qualified_purl, sbom, sbom_node,
+    sbom_package, sbom_package_cpe_ref, sbom_package_license, sbom_package_purl_ref,
 };
 
 pub mod license_export;
@@ -43,16 +44,23 @@ impl LicenseService {
         (
             Vec<SbomPackageLicense>,
             Vec<ExtractedLicensingInfos>,
-            Option<SbomName>,
+            Option<SbomNameGroupVersion>,
         ),
         Error,
     > {
-        let name: Option<SbomName> = sbom::Entity::find()
+        let name_version_group: Option<SbomNameGroupVersion> = sbom::Entity::find()
             .try_filter(id.clone())?
-            .join(JoinType::LeftJoin, sbom::Relation::Node.def())
+            .join(JoinType::Join, sbom::Relation::SbomNode.def())
+            .join(JoinType::Join, sbom_node::Relation::DescribesSbom.def())
+            .join(
+                JoinType::Join,
+                package_relates_to_package::Relation::RightPackage.def(),
+            )
             .select_only()
             .column_as(sbom_node::Column::Name, "sbom_name")
-            .into_model::<SbomName>()
+            .column_as(sbom_package::Column::Group, "sbom_group")
+            .column_as(sbom_package::Column::Version, "sbom_version")
+            .into_model::<SbomNameGroupVersion>()
             .one(connection)
             .await?;
 
@@ -72,8 +80,6 @@ impl LicenseService {
             .column_as(sbom::Column::SbomId, "sbom_id")
             .column_as(sbom::Column::DocumentId, "sbom_namespace")
             .column_as(sbom_package::Column::NodeId, "node_id")
-            .column_as(sbom_package::Column::Group, "component_group")
-            .column_as(sbom_package::Column::Version, "component_version")
             .column_as(sbom_node::Column::Name, "package_name")
             .column_as(license::Column::Text, "license_text")
             .into_model::<SbomPackageLicenseBase>()
@@ -117,8 +123,6 @@ impl LicenseService {
             sbom_package_list.push(SbomPackageLicense {
                 sbom_namespace: spl.sbom_namespace,
                 name: spl.package_name,
-                version: spl.component_version,
-                group: spl.component_group,
                 purl: result_purl,
                 other_reference: result_cpe,
                 license_text: spl.license_text,
@@ -137,7 +141,7 @@ impl LicenseService {
             .into_model::<ExtractedLicensingInfos>()
             .all(connection)
             .await?;
-        Ok((sbom_package_list, license_info_list, name))
+        Ok((sbom_package_list, license_info_list, name_version_group))
     }
 
     // pub async fn list_licenses(
