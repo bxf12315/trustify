@@ -12,6 +12,8 @@ type CSVs = (Writer<Vec<u8>>, Writer<Vec<u8>>);
 
 pub struct LicenseExporter {
     sbom_name: String,
+    sbom_group: Option<String>,
+    sbom_version: String,
     sbom_license: Vec<SbomPackageLicense>,
     extracted_licensing_infos: Vec<ExtractedLicensingInfos>,
 }
@@ -19,11 +21,15 @@ pub struct LicenseExporter {
 impl LicenseExporter {
     pub fn new(
         sbom_name: String,
+        sbom_group: Option<String>,
+        sbom_version: String,
         sbom_license: Vec<SbomPackageLicense>,
         extracted_licensing_infos: Vec<ExtractedLicensingInfos>,
     ) -> Self {
         LicenseExporter {
             sbom_name,
+            sbom_group,
+            sbom_version,
             sbom_license,
             extracted_licensing_infos,
         }
@@ -141,8 +147,8 @@ impl LicenseExporter {
                     .sbom_namespace
                     .clone()
                     .unwrap_or_else(String::default),
-                &package.group.clone().unwrap_or_else(String::default),
-                &package.version.clone().unwrap_or_else(String::default),
+                &self.sbom_group.clone().unwrap_or_default(),
+                &self.sbom_version.clone(),
                 &purl_list,
                 &package.license_text.clone().unwrap_or_else(String::default),
                 &alternate_package_reference,
