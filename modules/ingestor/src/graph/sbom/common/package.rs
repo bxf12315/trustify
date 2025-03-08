@@ -1,5 +1,5 @@
 use crate::graph::sbom::common::node::NodeCreator;
-use crate::graph::sbom::{Checksum, LicenseCreator, LicenseInfo, ReferenceSource};
+use crate::graph::sbom::{Checksum, LicenseInfo, ReferenceSource};
 use sea_orm::{ActiveValue::Set, ConnectionTrait, DbErr, EntityTrait};
 use sea_query::OnConflict;
 use tracing::instrument;
@@ -28,7 +28,7 @@ pub struct NodeInfoParam {
     pub version: Option<String>,
     pub declared_licenses: Option<LicenseInfo>,
     pub concluded_licenses: Option<LicenseInfo>,
-    pub cyclonedx_licenses: Option<LicenseCreator>,
+    pub cyclonedx_licenses: Option<Vec<Uuid>>,
 }
 
 pub enum PackageReference {
@@ -146,13 +146,13 @@ impl PackageCreator {
                 });
         }
 
-        if let Some(cyclonedx) = node_info.cyclonedx_licenses {
-            for (uuid, _v) in cyclonedx.licenses {
+        if let Some(licenses_uuid) = node_info.cyclonedx_licenses {
+            for license_uuid in licenses_uuid {
                 self.sbom_packge_licenses
                     .push(sbom_package_license::ActiveModel {
                         sbom_id: Set(self.sbom_id),
                         node_id: Set(node_info.node_id.clone()),
-                        license_id: Set(uuid),
+                        license_id: Set(license_uuid),
                         license_type: Set(sbom_package_license::LicenseCategory::Declared),
                     });
             }

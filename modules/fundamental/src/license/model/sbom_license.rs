@@ -8,9 +8,6 @@ pub struct SbomPackageLicense {
     pub sbom_namespace: Option<String>,
     /// Package name
     pub name: String,
-    /// Package version
-    pub version: Option<String>,
-    pub group: Option<String>,
     /// package package URL
     pub purl: Vec<Purl>,
     pub other_reference: Vec<trustify_entity::cpe::Model>,
@@ -34,8 +31,6 @@ pub struct Purl {
 pub struct SbomPackageLicenseBase {
     pub sbom_name: Option<String>,
     pub sbom_namespace: Option<String>,
-    pub component_group: Option<String>,
-    pub component_version: Option<String>,
     pub node_id: String,
     pub sbom_id: Uuid,
     pub package_name: String,
@@ -43,8 +38,10 @@ pub struct SbomPackageLicenseBase {
 }
 
 #[derive(Debug, Clone, Default, FromQueryResult)]
-pub struct SbomName {
+pub struct SbomNameGroupVersion {
     pub sbom_name: String,
+    pub sbom_group: Option<String>,
+    pub sbom_version: String,
 }
 
 #[derive(Debug, Clone, FromQueryResult)]
