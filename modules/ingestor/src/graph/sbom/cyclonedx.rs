@@ -320,7 +320,6 @@ struct ComponentCreator<'a> {
     relationships: &'a mut RelationshipCreator<CycloneDxProcessor>,
 
     refs: Vec<PackageReference>,
-    license_relations: Vec<LicenseInfo>,
 }
 
 impl<'a> ComponentCreator<'a> {
@@ -336,7 +335,6 @@ impl<'a> ComponentCreator<'a> {
             purls,
             licenses,
             refs: Default::default(),
-            license_relations: Default::default(),
             packages,
             relationships,
         }
@@ -348,7 +346,7 @@ impl<'a> ComponentCreator<'a> {
             .clone()
             .unwrap_or_else(|| Uuid::new_v4().to_string());
 
-        self.add_license(comp);
+        let licenses_uuid = self.add_license(comp);
 
         if let Some(cpe) = &comp.cpe {
             if let Ok(cpe) = Cpe::from_str(cpe.as_ref()) {
@@ -396,7 +394,7 @@ impl<'a> ComponentCreator<'a> {
                 version: comp.version.as_ref().map(|v| v.to_string()),
                 declared_licenses: None,
                 concluded_licenses: None,
-                cyclonedx_licenses: Some(self.licenses.clone()),
+                cyclonedx_licenses: Some(licenses_uuid),
             },
             self.refs,
             comp.hashes.clone().into_iter().flatten(),
@@ -470,7 +468,8 @@ impl<'a> ComponentCreator<'a> {
         self.purls.add(purl);
     }
 
-    fn add_license(&mut self, component: &Component) {
+    fn add_license(&mut self, component: &Component) -> Vec<Uuid> {
+        let mut license_uuid = vec![];
         if let Some(licenses) = &component.licenses {
             match licenses {
                 LicenseChoiceUrl::Variant0(licenses) => {
@@ -486,7 +485,7 @@ impl<'a> ComponentCreator<'a> {
                         let license = LicenseInfo { license };
 
                         self.licenses.add(&license);
-                        self.license_relations.push(license.clone());
+                        license_uuid.push(license.uuid());
                     }
                 }
                 LicenseChoiceUrl::Variant1(licenses) => {
@@ -496,10 +495,11 @@ impl<'a> ComponentCreator<'a> {
                         };
 
                         self.licenses.add(&license);
-                        self.license_relations.push(license.clone());
+                        license_uuid.push(license.uuid());
                     }
                 }
             }
         }
+        license_uuid
     }
 }

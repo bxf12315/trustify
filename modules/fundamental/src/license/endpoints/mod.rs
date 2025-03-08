@@ -106,11 +106,13 @@ pub async fn get_license_export(
 ) -> actix_web::Result<impl Responder> {
     let id = Id::from_str(&id).map_err(Error::IdKey)?;
 
-    let (sbom_license_list, sbom_license_info_list, sbom_name) =
+    let (sbom_license_list, sbom_license_info_list, sbom_name_version_group) =
         fetcher.license_export(id, db.as_ref()).await?;
-    if let Some(name) = sbom_name.clone() {
+    if let Some(name_group_version) = sbom_name_version_group.clone() {
         let exporter = LicenseExporter::new(
-            name.sbom_name.clone(),
+            name_group_version.sbom_name.clone(),
+            name_group_version.sbom_group.clone(),
+            name_group_version.sbom_version.clone(),
             sbom_license_list,
             sbom_license_info_list,
         );
@@ -122,7 +124,7 @@ pub async fn get_license_export(
                 "Content-Disposition",
                 format!(
                     "attachment; filename=\"{}_licenses.tar.gz\"",
-                    get_sanitize_filename(name.sbom_name.clone())
+                    get_sanitize_filename(name_group_version.sbom_name.clone())
                 ),
             ))
             .body(zip))
