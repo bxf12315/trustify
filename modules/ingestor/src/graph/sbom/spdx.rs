@@ -168,19 +168,19 @@ impl SbomContext {
             let mut declared_license_ref = None;
             let mut concluded_license_ref = None;
             if let Some(declared_license) = declared_license_info {
-                if declared_license.license != "NOASSERTION" {
-                    let _ = declared_license_ref.insert(declared_license.clone());
-                    licenses.add(&declared_license);
-                    // license_refs.push(declared_license);
-                }
+                // if declared_license.license != "NOASSERTION" {
+                let _ = declared_license_ref.insert(declared_license.clone());
+                licenses.add(&declared_license);
+                // license_refs.push(declared_license);
+                // }
             }
 
             if let Some(concluded_license) = concluded_license_info {
-                if concluded_license.license != "NOASSERTION" {
-                    let _ = concluded_license_ref.insert(concluded_license.clone());
-                    licenses.add(&concluded_license);
-                    // license_refs.push(concluded_license);
-                }
+                // if concluded_license.license != "NOASSERTION" {
+                let _ = concluded_license_ref.insert(concluded_license.clone());
+                licenses.add(&concluded_license);
+                // license_refs.push(concluded_license);
+                // }
             }
 
             let mut product_cpe = None;
