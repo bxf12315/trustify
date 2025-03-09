@@ -20,6 +20,7 @@ use trustify_common::{
     id::{Id, TrySelectForId},
     model::{Paginated, PaginatedResults},
 };
+use trustify_entity::sbom_package_license::LicenseCategory;
 use trustify_entity::{
     license, licensing_infos, package_relates_to_package, qualified_purl, sbom, sbom_node,
     sbom_package, sbom_package_cpe_ref, sbom_package_license, sbom_package_purl_ref,
@@ -67,14 +68,18 @@ impl LicenseService {
         let package_license: Vec<SbomPackageLicenseBase> = sbom::Entity::find()
             .try_filter(id.clone())?
             .join(JoinType::LeftJoin, sbom::Relation::Packages.def())
-            .join(JoinType::Join, sbom_package::Relation::Node.def())
+            .join(JoinType::InnerJoin, sbom_package::Relation::Node.def())
             .join(
                 JoinType::LeftJoin,
                 sbom_package::Relation::PackageLicense.def(),
             )
             .join(
-                JoinType::LeftJoin,
+                JoinType::InnerJoin,
                 sbom_package_license::Relation::License.def(),
+            )
+            .filter(
+                Condition::all()
+                    .add(sbom_package_license::Column::LicenseType.eq(LicenseCategory::Declared)),
             )
             .select_only()
             .column_as(sbom::Column::SbomId, "sbom_id")

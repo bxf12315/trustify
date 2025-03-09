@@ -4,7 +4,7 @@ use std::io::Read;
 use tar::Archive;
 use test_context::test_context;
 use test_log::test;
-use trustify_entity::sbom;
+use trustify_entity::{sbom, sbom_package, sbom_package_license};
 use trustify_module_fundamental::license::model::sbom_license::SbomNameGroupVersion;
 use trustify_module_fundamental::license::service::{
     LicenseService, license_export::LicenseExporter,
@@ -16,6 +16,82 @@ use uuid::Uuid;
 pub struct Sbom {
     pub sbom_id: Uuid,
     pub sbom_namespace: String,
+}
+
+#[test_context(TrustifyContext)]
+#[test(tokio::test)]
+async fn test_cyclonedx(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
+    let _result = ctx
+        .ingest_document("cyclonedx/application.cdx.json")
+        .await?;
+
+    let result_sbom: Option<Sbom> = sbom::Entity::find()
+        .column_as(sbom::Column::SbomId, "sbom_id")
+        .column_as(sbom::Column::DocumentId, "sbom_namespace")
+        .into_model::<Sbom>()
+        .one(&ctx.db)
+        .await?;
+
+    assert_eq!(
+        "urn:uuid:da67396d-a1a3-3983-9570-6f8b96ac7392/1",
+        result_sbom.clone().unwrap_or_default().sbom_namespace
+    );
+    if let Some(id) = result_sbom {
+        let license_service = LicenseService::new(ctx.db.clone());
+        let (sbom_license_list, sbom_license_info_list, _sbom_name_group_version) = license_service
+            .license_export(trustify_common::id::Id::Uuid(id.sbom_id), &ctx.db)
+            .await?;
+
+        let sp: Vec<sbom_package::Model> = sbom_package::Entity::find().all(&ctx.db).await?;
+
+        let spl: Vec<sbom_package_license::Model> =
+            sbom_package_license::Entity::find().all(&ctx.db).await?;
+
+        assert_eq!(89, sp.len());
+        assert_eq!(96, spl.len());
+        assert_eq!(96, sbom_license_list.len());
+        assert_eq!(0, sbom_license_info_list.len());
+    }
+
+    Ok(())
+}
+
+#[test_context(TrustifyContext)]
+#[test(tokio::test)]
+async fn test_spdx(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
+    let _result = ctx
+        .ingest_document("spdx/SATELLITE-6.15-RHEL-8.json")
+        .await?;
+
+    let result_sbom: Option<Sbom> = sbom::Entity::find()
+        .column_as(sbom::Column::SbomId, "sbom_id")
+        .column_as(sbom::Column::DocumentId, "sbom_namespace")
+        .into_model::<Sbom>()
+        .one(&ctx.db)
+        .await?;
+
+    assert_eq!(
+        "https://access.redhat.com/security/data/sbom/spdx/SATELLITE-6.15-RHEL-8",
+        result_sbom.clone().unwrap_or_default().sbom_namespace
+    );
+    if let Some(id) = result_sbom {
+        let license_service = LicenseService::new(ctx.db.clone());
+        let (sbom_license_list, sbom_license_info_list, _sbom_name_group_version) = license_service
+            .license_export(trustify_common::id::Id::Uuid(id.sbom_id), &ctx.db)
+            .await?;
+
+        let sp: Vec<sbom_package::Model> = sbom_package::Entity::find().all(&ctx.db).await?;
+
+        let spl: Vec<sbom_package_license::Model> =
+            sbom_package_license::Entity::find().all(&ctx.db).await?;
+
+        assert_eq!(2084, sbom_license_list.len());
+        assert_eq!(2084, sp.len());
+        assert_eq!(4168, spl.len());
+        assert_eq!(49, sbom_license_info_list.len());
+    }
+
+    Ok(())
 }
 
 #[test_context(TrustifyContext)]
