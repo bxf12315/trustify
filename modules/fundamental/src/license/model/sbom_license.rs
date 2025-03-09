@@ -31,7 +31,7 @@ pub struct Purl {
 pub struct SbomPackageLicenseBase {
     pub sbom_name: Option<String>,
     pub sbom_namespace: Option<String>,
-    pub node_id: String,
+    pub node_id: Option<String>,
     pub sbom_id: Uuid,
     pub package_name: String,
     pub license_text: Option<String>,
