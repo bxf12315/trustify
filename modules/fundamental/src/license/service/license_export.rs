@@ -11,6 +11,7 @@ use tar::Builder;
 type CSVs = (Writer<Vec<u8>>, Writer<Vec<u8>>);
 
 pub struct LicenseExporter {
+    sbom_namespace: String,
     sbom_name: String,
     sbom_group: Option<String>,
     sbom_version: String,
@@ -20,6 +21,7 @@ pub struct LicenseExporter {
 
 impl LicenseExporter {
     pub fn new(
+        sbom_namespace: String,
         sbom_name: String,
         sbom_group: Option<String>,
         sbom_version: String,
@@ -27,6 +29,7 @@ impl LicenseExporter {
         extracted_licensing_infos: Vec<ExtractedLicensingInfos>,
     ) -> Self {
         LicenseExporter {
+            sbom_namespace,
             sbom_name,
             sbom_group,
             sbom_version,
@@ -143,10 +146,7 @@ impl LicenseExporter {
 
             wtr_sbom.write_record([
                 &self.sbom_name.clone(),
-                &package
-                    .sbom_namespace
-                    .clone()
-                    .unwrap_or_else(String::default),
+                &self.sbom_namespace.clone(),
                 &self.sbom_group.clone().unwrap_or_default(),
                 &self.sbom_version.clone(),
                 &purl_list,

@@ -53,6 +53,7 @@ impl LicenseService {
                 package_relates_to_package::Relation::RightPackage.def(),
             )
             .select_only()
+            .column_as(sbom::Column::DocumentId, "sbom_namespace")
             .column_as(sbom_node::Column::Name, "sbom_name")
             .column_as(sbom_package::Column::Group, "sbom_group")
             .column_as(sbom_package::Column::Version, "sbom_version")
@@ -78,9 +79,7 @@ impl LicenseService {
             )
             .select_only()
             .column_as(sbom::Column::SbomId, "sbom_id")
-            .column_as(sbom::Column::DocumentId, "sbom_namespace")
             .column_as(sbom_package::Column::NodeId, "node_id")
-            .column_as(sbom_node::Column::Name, "package_name")
             .column_as(license::Column::Text, "license_text")
             .into_model::<SbomPackageLicenseBase>()
             .all(connection)
@@ -121,8 +120,6 @@ impl LicenseService {
                 .await?;
 
             sbom_package_list.push(SbomPackageLicense {
-                sbom_namespace: spl.sbom_namespace,
-                name: spl.package_name,
                 purl: result_purl,
                 other_reference: result_cpe,
                 license_text: spl.license_text,
