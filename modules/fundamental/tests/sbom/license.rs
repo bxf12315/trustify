@@ -119,6 +119,7 @@ async fn test_license_export_spdx(ctx: &TrustifyContext) -> Result<(), anyhow::E
         let sbom_name_group_version =
             sbom_name_group_version.unwrap_or_else(SbomNameGroupVersion::default);
         let exporter = LicenseExporter::new(
+            sbom_name_group_version.sbom_namespace,
             sbom_name_group_version.sbom_name,
             sbom_name_group_version.sbom_group,
             sbom_name_group_version.sbom_version,
@@ -205,6 +206,7 @@ async fn test_license_export_cyclonedx(ctx: &TrustifyContext) -> Result<(), anyh
         let sbom_name_group_version =
             sbom_name_group_version.unwrap_or_else(SbomNameGroupVersion::default);
         let exporter = LicenseExporter::new(
+            sbom_name_group_version.sbom_namespace,
             sbom_name_group_version.sbom_name,
             sbom_name_group_version.sbom_group,
             sbom_name_group_version.sbom_version,
