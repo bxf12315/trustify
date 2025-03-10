@@ -95,24 +95,6 @@ impl PurlDetails {
         )
         .await?;
 
-        // let licenses = purl_license_assertion::Entity::find()
-        //     .join(
-        //         JoinType::LeftJoin,
-        //         purl_license_assertion::Relation::VersionedPurl.def(),
-        //     )
-        //     .join(
-        //         JoinType::LeftJoin,
-        //         purl_license_assertion::Relation::License.def(),
-        //     )
-        //     .join(
-        //         JoinType::LeftJoin,
-        //         purl_license_assertion::Relation::Sbom.def(),
-        //     )
-        //     .filter(versioned_purl::Column::Id.eq(package_version.id))
-        //     .try_into_multi_model::<LicenseCatcher>()?
-        //     .all(tx)
-        //     .await?;
-
         Ok(PurlDetails {
             head: PurlHead::from_entity(&package, &package_version, qualified_package, tx).await?,
             version: VersionedPurlHead::from_entity(&package, &package_version, tx).await?,
