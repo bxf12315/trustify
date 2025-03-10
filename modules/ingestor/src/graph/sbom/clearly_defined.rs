@@ -1,12 +1,10 @@
 use crate::graph::purl::creator::PurlCreator;
 use crate::graph::sbom::{LicenseCreator, LicenseInfo, SbomContext, SbomInformation};
 use sea_orm::ConnectionTrait;
-// use sea_query::OnConflict;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tracing::instrument;
 use trustify_common::purl::Purl;
-// use trustify_entity::purl_license_assertion;
 
 impl SbomContext {
     #[instrument(skip(db, curation), err)]
@@ -35,7 +33,6 @@ impl SbomContext {
             purls.add(purl);
             licenses.add(&license_info);
         }
-
         purls.create(db).await?;
         licenses.create(db).await?;
 

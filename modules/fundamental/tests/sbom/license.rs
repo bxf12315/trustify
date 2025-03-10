@@ -131,10 +131,6 @@ async fn test_license_export_spdx(ctx: &TrustifyContext) -> Result<(), anyhow::E
         let compressed_data = exporter
             .generate()
             .unwrap_or_else(|_| panic!("generate failed"));
-        // let mut file = File::create("/tmp/mtv-2.6.tar.gz")
-        //     .unwrap_or_else(|_| panic!("create file failed"));
-        // file.write_all(&compressed_data)
-        //     .unwrap_or_else(|_| panic!("write file failed"));
 
         let mut licenses_csv_found = false;
         let mut licenses_ref_csv_found = false;
@@ -221,10 +217,6 @@ async fn test_license_export_cyclonedx(ctx: &TrustifyContext) -> Result<(), anyh
         let compressed_data = exporter
             .generate()
             .unwrap_or_else(|_| panic!("generate failed"));
-        // let mut file = File::create("/tmp/application.tar.gz")
-        //     .unwrap_or_else(|_| panic!("create file failed"));
-        // file.write_all(&compressed_data)
-        //     .unwrap_or_else(|_| panic!("write file failed"));
 
         let mut licenses_csv_found = false;
         let mut licenses_ref_csv_found = false;

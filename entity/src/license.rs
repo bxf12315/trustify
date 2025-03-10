@@ -26,10 +26,4 @@ impl Related<super::sbom_package_license::Entity> for Entity {
     }
 }
 
-// impl Related<super::purl_license_assertion::Entity> for Entity {
-//     fn to() -> RelationDef {
-//         Relation::PurlAssertions.def()
-//     }
-// }
-
 impl ActiveModelBehavior for ActiveModel {}
