@@ -126,7 +126,7 @@ async fn test_license_export_spdx(ctx: &TrustifyContext) -> Result<(), anyhow::E
             sbom_license_info_list.clone(),
         );
         assert_eq!(45, sbom_license_info_list.len());
-        // assert_eq!(5388, sbom_license_list.len());
+        assert_eq!(5388, sbom_license_list.len());
 
         let compressed_data = exporter
             .generate()
@@ -147,21 +147,26 @@ async fn test_license_export_spdx(ctx: &TrustifyContext) -> Result<(), anyhow::E
                     licenses_csv_found = true;
                     let mut sbom_licenses = String::new();
                     entry.read_to_string(&mut sbom_licenses)?;
-                    // assert_eq!(10776, sbom_licenses.matches("MTV-2.6").count());
-                    // assert_eq!(
-                    //     5388,
-                    //     sbom_licenses
-                    //         .matches("https://access.redhat.com/security/data/sbom/spdx/MTV-2.6")
-                    //         .count()
-                    // );
+                    assert_eq!(10776, sbom_licenses.matches("MTV-2.6").count());
+                    assert_eq!(
+                        5388,
+                        sbom_licenses
+                            .matches("https://access.redhat.com/security/data/sbom/spdx/MTV-2.6")
+                            .count()
+                    );
                     assert_eq!(28, sbom_licenses.matches("pkg:oci/").count());
                     assert_eq!(1976, sbom_licenses.matches("pkg:npm/").count());
                     assert_eq!(2185, sbom_licenses.matches("pkg:golang/").count());
-                    // assert_eq!(1191, sbom_licenses.matches("pkg:rpm/").count());
-                    // assert_eq!(4664, sbom_licenses.matches("NOASSERTION").count());
+                    assert_eq!(1191, sbom_licenses.matches("pkg:rpm/").count());
+                    assert_eq!(4664, sbom_licenses.matches("NOASSERTION").count());
                 }
                 Ok(path) if path.file_name().unwrap_or_default() == "MTV-2.6_license_ref.csv" => {
                     licenses_ref_csv_found = true;
+                    let mut license_refs = String::new();
+                    entry.read_to_string(&mut license_refs)?;
+                    assert_eq!(45, license_refs.matches("\"LicenseRef-").count());
+                    assert_eq!(45, license_refs.matches("External License Info is obtained from a build system which predates the SPDX specification and is not strict in accepting valid SPDX licenses.").count());
+                    assert_eq!(1, license_refs.matches("\"LicenseRef-11\"	\"(FTL or GPLv2+) and BSD and MIT and Public Domain and zlib with acknowledgement\"	\"The license info found in the package meta data is: (FTL or GPLv2+) and BSD and MIT and Public Domain and zlib with acknowledgement. See the specific package info in this SPDX document or the package itself for more details.\"	\"External License Info is obtained from a build system which predates the SPDX specification and is not strict in accepting valid SPDX licenses.\"").count());
                 }
                 _ => {
                     return Err(anyhow::Error::msg(format!(
