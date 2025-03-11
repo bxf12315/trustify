@@ -5,8 +5,8 @@ use crate::{
         purl::creator::PurlCreator,
         sbom::{
             FileCreator, LicenseCreator, LicenseInfo, LicensingInfo, LicensingInfoCreator,
-            NodeInfoParam, PackageCreator, PackageReference, References, RelationshipCreator,
-            SbomContext, SbomInformation, Spdx,
+            NodeInfoParam, PackageCreator, PackageLicensenInfo, PackageReference, References,
+            RelationshipCreator, SbomContext, SbomInformation, Spdx,
             processor::{
                 InitContext, PostContext, Processor, RedHatProductComponentRelationships,
                 RunProcessors,
@@ -22,7 +22,7 @@ use std::str::FromStr;
 use time::OffsetDateTime;
 use tracing::instrument;
 use trustify_common::{cpe::Cpe, purl::Purl};
-use trustify_entity::relationship::Relationship;
+use trustify_entity::{relationship::Relationship, sbom_package_license::LicenseCategory};
 
 pub struct Information<'a>(pub &'a SPDX);
 
@@ -230,18 +230,34 @@ impl SbomContext {
                 }
             }
 
+            let mut package_license_info = Vec::new();
+            package_license_info.append(
+                &mut declared_license_ref
+                    .iter()
+                    .map(|license| PackageLicensenInfo {
+                        license_id: license.uuid(),
+                        license_type: LicenseCategory::Declared,
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            package_license_info.append(
+                &mut concluded_license_ref
+                    .iter()
+                    .map(|license| PackageLicensenInfo {
+                        license_id: license.uuid(),
+                        license_type: LicenseCategory::Concluded,
+                    })
+                    .collect::<Vec<_>>(),
+            );
             packages.add(
                 NodeInfoParam {
                     node_id: package.package_spdx_identifier,
                     name: package.package_name,
                     group: None,
                     version: package.package_version,
-                    declared_licenses: declared_license_ref,
-                    concluded_licenses: concluded_license_ref,
-                    cyclonedx_licenses: None,
+                    package_license_info,
                 },
                 refs,
-                // license_refs,
                 package.package_checksum,
             );
         }

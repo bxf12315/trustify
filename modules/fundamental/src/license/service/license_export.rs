@@ -1,7 +1,9 @@
-use crate::license::get_sanitize_filename;
 use crate::{
     Error,
-    license::model::sbom_license::{ExtractedLicensingInfos, SbomPackageLicense},
+    license::{
+        get_sanitize_filename,
+        model::sbom_license::{ExtractedLicensingInfos, SbomPackageLicense},
+    },
 };
 use core::time::Duration;
 use csv::{Writer, WriterBuilder};
@@ -101,7 +103,7 @@ impl LicenseExporter {
         let mut wtr_sbom = WriterBuilder::new()
             .delimiter(b'\t')
             .quote_style(csv::QuoteStyle::Always)
-            .has_headers(true) // Set delimiter to tab
+            .has_headers(true)
             .from_writer(vec![]);
 
         let mut wtr_license_ref = WriterBuilder::new()

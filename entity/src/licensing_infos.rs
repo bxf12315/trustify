@@ -4,9 +4,8 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "licensing_infos")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: Uuid,
-    #[sea_orm(primary_key)]
     pub sbom_id: Uuid,
+    #[sea_orm(primary_key)]
     pub license_id: String,
     pub name: String,
     pub extracted_text: String,

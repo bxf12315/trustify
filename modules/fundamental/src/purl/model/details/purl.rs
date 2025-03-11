@@ -100,7 +100,7 @@ impl PurlDetails {
             version: VersionedPurlHead::from_entity(&package, &package_version, tx).await?,
             base: BasePurlHead::from_entity(&package).await?,
             advisories: PurlAdvisory::from_entities(purl_statuses, product_statuses, tx).await?,
-            licenses: vec![],
+            licenses: vec![], // Leave it empty for now and wait to add relevant content later.
         })
     }
 }

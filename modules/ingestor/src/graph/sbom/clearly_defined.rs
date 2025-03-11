@@ -16,6 +16,7 @@ impl SbomContext {
         let mut purls = PurlCreator::new();
         let mut licenses = LicenseCreator::new();
 
+        // TODO: Since the node id cannot be obtained here, it’s not possible to replace purl_license_assertion with sbom_package_license.
         // let mut assertions = Vec::new();
 
         for (purl, license) in curation.iter() {

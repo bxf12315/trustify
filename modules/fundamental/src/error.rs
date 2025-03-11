@@ -40,11 +40,11 @@ pub enum Error {
     AgentError(AgentError),
     #[error(transparent)]
     ChainError(ChainError),
-    #[error("error from  csv write: {0}")]
+    #[error(transparent)]
     CsvError(#[from] csv::Error),
-    #[error("error from  csv inner error: {0}")]
+    #[error("error from csv inner error: {0}")]
     CsvIntoInnerError(String),
-    #[error("error from  std io error: {0}")]
+    #[error(transparent)]
     Io(#[from] std::io::Error),
 }
 
