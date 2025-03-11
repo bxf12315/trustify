@@ -5,12 +5,13 @@ use crate::{
         purl::creator::PurlCreator,
         sbom::{
             CycloneDx as CycloneDxProcessor, LicenseCreator, LicenseInfo, NodeInfoParam,
-            PackageCreator, PackageReference, References, RelationshipCreator, SbomContext,
-            SbomInformation,
+            PackageCreator, PackageLicensenInfo, PackageReference, References, RelationshipCreator,
+            SbomContext, SbomInformation,
             processor::{
                 InitContext, PostContext, Processor, RedHatProductComponentRelationships,
                 RunProcessors,
             },
+            sbom_package_license::LicenseCategory,
         },
     },
     service::Error,
@@ -386,15 +387,21 @@ impl<'a> ComponentCreator<'a> {
             }
         }
 
+        let cyclone_licenses = licenses_uuid
+            .iter()
+            .map(|l| PackageLicensenInfo {
+                license_id: *l,
+                license_type: LicenseCategory::Declared,
+            })
+            .collect::<Vec<_>>();
+
         self.packages.add(
             NodeInfoParam {
                 node_id: node_id.clone(),
                 name: comp.name.to_string(),
                 group: comp.group.as_ref().map(|v| v.to_string()),
                 version: comp.version.as_ref().map(|v| v.to_string()),
-                declared_licenses: None,
-                concluded_licenses: None,
-                cyclonedx_licenses: Some(licenses_uuid),
+                package_license_info: cyclone_licenses,
             },
             self.refs,
             comp.hashes.clone().into_iter().flatten(),

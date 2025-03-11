@@ -414,7 +414,6 @@ impl SbomContext {
 
     pub async fn ingest_purl_license_assertion<C: ConnectionTrait>(
         &self,
-        _purl: &Purl,
         license: &str,
         connection: &C,
     ) -> Result<(), Error> {
@@ -622,9 +621,7 @@ impl SbomContext {
                 name,
                 group: None,
                 version,
-                declared_licenses: None,
-                concluded_licenses: None,
-                cyclonedx_licenses: None,
+                package_license_info: vec![],
             },
             refs,
             Checksum::NONE,

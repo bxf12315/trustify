@@ -11,24 +11,34 @@ use crate::{
 use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QuerySelect, RelationTrait};
 use sea_query::{Condition, JoinType};
 use trustify_common::{
-    db::{Database, query::Query},
+    db::query::Query,
     id::{Id, TrySelectForId},
     model::{Paginated, PaginatedResults},
 };
-use trustify_entity::sbom_package_license::LicenseCategory;
 use trustify_entity::{
     license, licensing_infos, package_relates_to_package, qualified_purl, sbom, sbom_node,
-    sbom_package, sbom_package_cpe_ref, sbom_package_license, sbom_package_purl_ref,
+    sbom_package, sbom_package_cpe_ref, sbom_package_license,
+    sbom_package_license::LicenseCategory, sbom_package_purl_ref,
 };
 
 pub mod license_export;
 
-pub struct LicenseService {
-    // db: Database,
+pub struct LicenseService {}
+
+pub struct LicenseExportResult {
+    pub sbom_package_license: Vec<SbomPackageLicense>,
+    pub extracted_licensing_infos: Vec<ExtractedLicensingInfos>,
+    pub sbom_name_group_version: Option<SbomNameGroupVersion>,
+}
+
+impl Default for LicenseService {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LicenseService {
-    pub fn new(_db: Database) -> Self {
+    pub fn new() -> Self {
         Self {}
     }
 
@@ -36,14 +46,7 @@ impl LicenseService {
         &self,
         id: Id,
         connection: &C,
-    ) -> Result<
-        (
-            Vec<SbomPackageLicense>,
-            Vec<ExtractedLicensingInfos>,
-            Option<SbomNameGroupVersion>,
-        ),
-        Error,
-    > {
+    ) -> Result<LicenseExportResult, Error> {
         let name_version_group: Option<SbomNameGroupVersion> = sbom::Entity::find()
             .try_filter(id.clone())?
             .join(JoinType::Join, sbom::Relation::SbomNode.def())
@@ -138,7 +141,12 @@ impl LicenseService {
             .into_model::<ExtractedLicensingInfos>()
             .all(connection)
             .await?;
-        Ok((sbom_package_list, license_info_list, name_version_group))
+
+        Ok(LicenseExportResult {
+            sbom_package_license: sbom_package_list,
+            extracted_licensing_infos: license_info_list,
+            sbom_name_group_version: name_version_group,
+        })
     }
 
     pub async fn list_spdx_licenses(

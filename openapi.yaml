@@ -1529,13 +1529,12 @@ paths:
       parameters:
       - name: id
         in: path
-        description: Digest/hash of the document, prefixed by hash type, such as 'sha256:<hash>' or 'urn:uuid:<uuid>'
         required: true
         schema:
           type: string
       responses:
         '200':
-          description: license zip file
+          description: license gzip files
           content:
             application/octet-stream:
               schema:
