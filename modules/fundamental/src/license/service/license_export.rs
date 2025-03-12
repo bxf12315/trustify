@@ -13,28 +13,22 @@ use tar::Builder;
 type CSVs = (Writer<Vec<u8>>, Writer<Vec<u8>>);
 
 pub struct LicenseExporter {
-    sbom_namespace: String,
+    sbom_id: String,
     sbom_name: String,
-    sbom_group: Option<String>,
-    sbom_version: String,
     sbom_license: Vec<SbomPackageLicense>,
     extracted_licensing_infos: Vec<ExtractedLicensingInfos>,
 }
 
 impl LicenseExporter {
     pub fn new(
-        sbom_namespace: String,
+        sbom_id: String,
         sbom_name: String,
-        sbom_group: Option<String>,
-        sbom_version: String,
         sbom_license: Vec<SbomPackageLicense>,
         extracted_licensing_infos: Vec<ExtractedLicensingInfos>,
     ) -> Self {
         LicenseExporter {
-            sbom_namespace,
+            sbom_id,
             sbom_name,
-            sbom_group,
-            sbom_version,
             sbom_license,
             extracted_licensing_infos,
         }
@@ -113,13 +107,14 @@ impl LicenseExporter {
             .from_writer(vec![]);
         wtr_license_ref.write_record(["licenseId", "name", "extracted text", "comment"])?;
         wtr_sbom.write_record([
-            "name",
-            "namespace",
-            "group",
-            "version",
-            "package reference",
-            "license text",
-            "alternate package reference",
+            "SBOM name",
+            "SBOM id",
+            "package name",
+            "package group",
+            "package version",
+            "package purl",
+            "package cpe",
+            "license",
         ])?;
 
         for extracted_licensing_info in &self.extracted_licensing_infos {
@@ -133,7 +128,7 @@ impl LicenseExporter {
 
         for package in &self.sbom_license {
             let alternate_package_reference = package
-                .other_reference
+                .cpe
                 .iter()
                 .map(|reference| format!("{}", reference))
                 .collect::<Vec<_>>()
@@ -148,12 +143,13 @@ impl LicenseExporter {
 
             wtr_sbom.write_record([
                 &self.sbom_name.clone(),
-                &self.sbom_namespace.clone(),
-                &self.sbom_group.clone().unwrap_or_default(),
-                &self.sbom_version.clone(),
+                &self.sbom_id.clone(),
+                &package.name,
+                &package.group.clone().unwrap_or_default(),
+                &package.version.clone().unwrap_or_default(),
                 &purl_list,
-                &package.license_text.clone().unwrap_or_else(String::default),
                 &alternate_package_reference,
+                &package.license_text.clone().unwrap_or_else(String::default),
             ])?;
         }
         Ok((wtr_sbom, wtr_license_ref))

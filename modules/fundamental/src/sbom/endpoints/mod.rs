@@ -96,10 +96,8 @@ pub async fn get_license_export(
     let license_export_result = fetcher.license_export(id, db.as_ref()).await?;
     if let Some(name_group_version) = license_export_result.sbom_name_group_version.clone() {
         let exporter = LicenseExporter::new(
-            name_group_version.sbom_namespace.clone(),
+            name_group_version.sbom_id.clone(),
             name_group_version.sbom_name.clone(),
-            name_group_version.sbom_group.clone(),
-            name_group_version.sbom_version.clone(),
             license_export_result.sbom_package_license,
             license_export_result.extracted_licensing_infos,
         );

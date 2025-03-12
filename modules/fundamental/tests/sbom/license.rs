@@ -6,7 +6,7 @@ use test_context::test_context;
 use test_log::test;
 use trustify_entity::{sbom_package, sbom_package_license};
 use trustify_module_fundamental::license::{
-    model::sbom_license::SbomNameGroupVersion,
+    model::sbom_license::SbomNameId,
     service::{LicenseService, license_export::LicenseExporter},
 };
 use trustify_test_context::TrustifyContext;
@@ -79,12 +79,10 @@ async fn test_license_export_spdx(ctx: &TrustifyContext) -> Result<(), anyhow::E
 
     let sbom_name_group_version = license_result
         .sbom_name_group_version
-        .unwrap_or_else(SbomNameGroupVersion::default);
+        .unwrap_or_else(SbomNameId::default);
     let exporter = LicenseExporter::new(
-        sbom_name_group_version.sbom_namespace,
+        sbom_name_group_version.sbom_id,
         sbom_name_group_version.sbom_name,
-        sbom_name_group_version.sbom_group,
-        sbom_name_group_version.sbom_version,
         license_result.sbom_package_license.clone(),
         license_result.extracted_licensing_infos.clone(),
     );
@@ -106,7 +104,7 @@ async fn test_license_export_spdx(ctx: &TrustifyContext) -> Result<(), anyhow::E
                 licenses_csv_found = true;
                 let mut sbom_licenses = String::new();
                 entry.read_to_string(&mut sbom_licenses)?;
-                assert_eq!(10776, sbom_licenses.matches("MTV-2.6").count());
+                assert_eq!(10777, sbom_licenses.matches("MTV-2.6").count());
                 assert_eq!(
                     5388,
                     sbom_licenses
@@ -156,12 +154,10 @@ async fn test_license_export_cyclonedx(ctx: &TrustifyContext) -> Result<(), anyh
 
     let sbom_name_group_version = license_result
         .sbom_name_group_version
-        .unwrap_or_else(SbomNameGroupVersion::default);
+        .unwrap_or_else(SbomNameId::default);
     let exporter = LicenseExporter::new(
-        sbom_name_group_version.sbom_namespace,
+        sbom_name_group_version.sbom_id,
         sbom_name_group_version.sbom_name,
-        sbom_name_group_version.sbom_group,
-        sbom_name_group_version.sbom_version,
         license_result.sbom_package_license.clone(),
         license_result.extracted_licensing_infos.clone(),
     );
@@ -185,12 +181,12 @@ async fn test_license_export_cyclonedx(ctx: &TrustifyContext) -> Result<(), anyh
                 licenses_csv_found = true;
                 let mut sbom_licenses = String::new();
                 entry.read_to_string(&mut sbom_licenses)?;
-                assert_eq!(97, sbom_licenses.matches("spring-petclinic").count());
+                assert_eq!(98, sbom_licenses.matches("spring-petclinic").count());
                 assert_eq!(
-                    97,
+                    2,
                     sbom_licenses.matches("org.springframework.samples").count()
                 );
-                assert_eq!(97, sbom_licenses.matches("3.3.0-SNAPSHOT").count());
+                assert_eq!(2, sbom_licenses.matches("3.3.0-SNAPSHOT").count());
                 assert_eq!(96, sbom_licenses.matches("pkg:maven/").count());
                 // check some PURLs appear multiple times because they have multiple licenses
                 assert_eq!(
