@@ -72,6 +72,8 @@ pub fn configure(
         .service(get_license_export);
 }
 
+const CONTENT_TYPE_GZIP: &str = "application/gzip";
+
 #[utoipa::path(
     tag = "sbom",
     operation_id = "getLicenseExport",
@@ -79,7 +81,7 @@ pub fn configure(
         ("id" = String, Path,),
     ),
     responses(
-        (status = 200, description = "license gzip files", body = Vec<u8>),
+        (status = 200, description = "license gzip files", body = Vec<u8>, content_type = CONTENT_TYPE_GZIP),
         (status = 404, description = "The document could not be found"),
     ),
 )]
@@ -104,7 +106,7 @@ pub async fn get_license_export(
         let zip = exporter.generate()?;
 
         Ok(HttpResponse::Ok()
-            .content_type("application/gzip")
+            .content_type(CONTENT_TYPE_GZIP)
             .append_header((
                 "Content-Disposition",
                 format!(
