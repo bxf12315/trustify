@@ -1536,7 +1536,7 @@ paths:
         '200':
           description: license gzip files
           content:
-            application/octet-stream:
+            application/gzip:
               schema:
                 type: array
                 items:
