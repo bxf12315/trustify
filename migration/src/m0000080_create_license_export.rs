@@ -243,29 +243,11 @@ pub enum SbomPackageLicense {
     LicenseType,
 }
 
-// #[derive(DeriveIden)]
-// pub enum Sbom {
-//     Table,
-//     SbomId,
-// }
-
 #[derive(DeriveIden)]
 pub enum License {
     Table,
     Id,
 }
-
-// #[derive(DeriveIden)]
-// enum License {
-//     Table,
-//     Id,
-// }
-
-// #[derive(DeriveIden)]
-// enum Sbom {
-//     Table,
-//     SbomId,
-// }
 
 #[derive(DeriveIden)]
 enum VersionedPurl {
@@ -281,18 +263,6 @@ enum PurlLicenseAssertion {
     VersionedPurlId,
     LicenseId,
 }
-
-// #[derive(DeriveIden)]
-// enum License {
-//     Table,
-//     Id,
-// }
-
-// #[derive(DeriveIden)]
-// enum Sbom {
-//     Table,
-//     SbomId,
-// }
 
 #[derive(DeriveIden)]
 enum Cpe {

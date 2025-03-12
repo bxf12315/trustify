@@ -18,9 +18,6 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m0000010_init::Migration),
             Box::new(m0000020_add_sbom_group::Migration),
-            // Box::new(m0000030_create_licensing_infos::Migration),
-            // Box::new(m0000040_sbom_package_license::Migration),
-            // Box::new(m0000050_drop_purl_license_assertion::Migration),
             Box::new(m0000080_create_license_export::Migration),
             Box::new(m0000970_alter_importer_add_heartbeat::Migration),
         ]
