@@ -5,7 +5,6 @@ mod query;
 mod test;
 
 pub use query::*;
-use std::collections::HashSet;
 
 use crate::{
     Error::{self, Internal},
@@ -85,10 +84,10 @@ const CONTENT_TYPE_GZIP: &str = "application/gzip";
     ),
     responses(
     (status = 200, description = "fetch all unique license id and license info id", body = Vec<String>),
-    (status = 404, description = "not found"),
+    (status = 400, description = "Invalid UUID format."),
     ),
 )]
-#[get("/v2/sbom/{id}/licenseids")]
+#[get("/v2/sbom/{id}/license-ids")]
 pub async fn get_unique_licenses(
     fetcher: web::Data<LicenseService>,
     db: web::Data<Database>,
@@ -96,17 +95,8 @@ pub async fn get_unique_licenses(
     _: Require<ReadSbom>,
 ) -> actix_web::Result<impl Responder> {
     let id = Id::from_str(&id).map_err(Error::IdKey)?;
-    let sbom_id = if let Some(uuid) = id.try_as_uid() {
-        uuid
-    } else {
-        Uuid::new_v4()
-    };
-    let spdx_licenses = fetcher.get_unique_licenses(sbom_id, db.as_ref()).await?;
-    let license_infos = fetcher.get_license_info(sbom_id, db.as_ref()).await?;
-    let mut result = HashSet::new();
-    result.extend(spdx_licenses);
-    result.extend(license_infos);
-    Ok(HttpResponse::Ok().json(result))
+
+    Ok(HttpResponse::Ok().json(fetcher.get_all_license_info(id, db.as_ref()).await?))
 }
 
 #[utoipa::path(
