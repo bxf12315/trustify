@@ -45,7 +45,9 @@ jobs:
           path: ~/.theseus/postgresql
           key: ${{ runner.os }}-theseus-postgresql-${{ hashFiles('**/Cargo.lock') }}
       
-
+      - name: git test
+        run:  git branch -a
+        
       - name: Install cargo-tarpaulin
         run:  cargo install cargo-tarpaulin
       - name: Format
