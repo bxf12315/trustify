@@ -60,7 +60,7 @@ jobs:
           docker compose -f etc/deploy/compose/compose-minio.yaml up -d --wait
       - name: Test Coverage
         if: github.event_name == 'pull_request'
-        run: ｜ git diff --name-only origin/main...HEAD > changed_files.txt
+        run: | git diff --name-only origin/main...HEAD > changed_files.txt
           
           cargo tarpaulin --out Html --output-dir ./coverage \
             --packages trustify \
