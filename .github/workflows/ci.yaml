@@ -79,7 +79,7 @@ jobs:
           
           cargo tarpaulin --out Html --output-dir ./coverage \
             --packages trustify \
-            --changed-files changed_files.txt
+            --include-files changed_files.txt
       - name: Create PR Comment
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
