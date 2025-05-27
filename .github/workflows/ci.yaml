@@ -46,7 +46,9 @@ jobs:
           key: ${{ runner.os }}-theseus-postgresql-${{ hashFiles('**/Cargo.lock') }}
       
       - name: git test
-        run:  git branch -a
+        run: |
+        git branch -a
+        git ls-remote --heads origin
         
       - name: Install cargo-tarpaulin
         run:  cargo install cargo-tarpaulin
