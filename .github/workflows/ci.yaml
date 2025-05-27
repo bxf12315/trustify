@@ -65,7 +65,7 @@ jobs:
       - name: Test Coverage
         if: github.event_name == 'pull_request'
         run: | 
-          git diff --name-only main...HEAD > changed_files.txt
+          git diff --name-only origin/${{ github.base_ref }}...HEAD > changed_files.txt
           
           cargo tarpaulin --out Html --output-dir ./coverage \
             --packages trustify \
