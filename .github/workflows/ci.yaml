@@ -44,7 +44,10 @@ jobs:
         with:
           path: ~/.theseus/postgresql
           key: ${{ runner.os }}-theseus-postgresql-${{ hashFiles('**/Cargo.lock') }}
+      
 
+      - name: Install cargo-tarpaulin
+        run:  cargo install cargo-tarpaulin
       - name: Format
         run: cargo fmt --check
       - name: Check
@@ -55,6 +58,26 @@ jobs:
       - name: Start minio
         run: |
           docker compose -f etc/deploy/compose/compose-minio.yaml up -d --wait
+      - name: Test Coverage
+        if: github.event_name == 'pull_request'
+        run: ｜ git diff --name-only origin/main...HEAD > changed_files.txt
+          
+          cargo tarpaulin --out Html --output-dir ./coverage \
+            --packages trustify \
+            --changed-files changed_files.txt
+      - name: Create PR Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = fs.readFileSync('./coverage/index.html', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Coverage Report\n${coverage}`
+            });
       - name: Test
         run: cargo test --all-features -- --nocapture
         env:
