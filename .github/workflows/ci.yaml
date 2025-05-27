@@ -75,11 +75,7 @@ jobs:
           docker compose -f etc/deploy/compose/compose-minio.yaml up -d --wait
       - name: Test Coverage
         if: github.event_name == 'pull_request'
-        run: | 
-          
-          cargo tarpaulin --out Html --output-dir ./coverage \
-            
-            --include-files changed_files.txt
+        run: cargo tarpaulin --packages trustify-module-fundamental --out Html --output-dir ./coverage
       - name: Create PR Comment
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
