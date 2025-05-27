@@ -45,10 +45,21 @@ jobs:
           path: ~/.theseus/postgresql
           key: ${{ runner.os }}-theseus-postgresql-${{ hashFiles('**/Cargo.lock') }}
       
-      - name: git test
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+      
+      - name: Save changed files
         run: |
-        git branch -a
-        git ls-remote --heads origin
+          # 将所有修改的文件写入 changed_files.txt
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' > changed_files.txt
+          
+          # 显示文件内容
+          echo "=== Changed files saved to changed_files.txt ==="
+          cat changed_files.txt
+          
+          echo "=== File count ==="
+          wc -l changed_files.txt
         
       - name: Install cargo-tarpaulin
         run:  cargo install cargo-tarpaulin
@@ -65,7 +76,6 @@ jobs:
       - name: Test Coverage
         if: github.event_name == 'pull_request'
         run: | 
-          git diff --name-only origin/${{ github.base_ref }}...HEAD > changed_files.txt
           
           cargo tarpaulin --out Html --output-dir ./coverage \
             --packages trustify \
