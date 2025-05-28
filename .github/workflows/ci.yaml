@@ -90,11 +90,11 @@ jobs:
               repo: context.repo.repo,
               body: `## Coverage Report\n${coverage}`
             });
-      - name: Test
-        run: cargo test --all-features -- --nocapture
-        env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" # for embedded postgresql
-          RUST_LOG: warn,sqlx=error,sea_orm=error
+      # - name: Test
+      #   run: cargo test --all-features -- --nocapture
+      #   env:
+      #     GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" # for embedded postgresql
+      #     RUST_LOG: warn,sqlx=error,sea_orm=error
 
       - name: Export and Validate Generated Openapi Spec
         run: |
