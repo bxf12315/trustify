@@ -1,5 +1,4 @@
 use super::SbomService;
-use crate::sbom::model::LicenseBasicInfo;
 use crate::{
     Error,
     sbom::model::{
@@ -9,11 +8,12 @@ use crate::{
 };
 use futures_util::{StreamExt, TryStreamExt, stream};
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DbErr, EntityTrait, FromQueryResult, IntoSimpleExpr, QueryFilter,
-    QueryOrder, QueryResult, QuerySelect, RelationTrait, Select, SelectColumns, Statement,
-    StreamTrait, prelude::Uuid,
+    ColumnTrait, ConnectionTrait, DbErr, EntityTrait, FromJsonQueryResult, FromQueryResult,
+    IntoSimpleExpr, QueryFilter, QueryOrder, QueryResult, QuerySelect, RelationTrait, Select,
+    SelectColumns, Statement, StreamTrait, prelude::Uuid,
 };
 use sea_query::{Expr, JoinType, extension::postgres::PgExpr};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, fmt::Debug};
 use tracing::instrument;
@@ -594,6 +594,12 @@ struct PackageCatcher {
     licenses: Vec<LicenseBasicInfo>,
 }
 
+#[derive(Serialize, Deserialize, FromJsonQueryResult)]
+pub struct LicenseBasicInfo {
+    pub license_name: String,
+    pub license_type: i32,
+}
+
 /// Convert values from a "package row" into an SBOM package
 fn package_from_row(row: PackageCatcher) -> SbomPackage {
     let purl = row
@@ -632,6 +638,12 @@ fn package_from_row(row: PackageCatcher) -> SbomPackage {
         .map(|cpe| cpe.to_string())
         .collect();
 
+    let licenses = row
+        .licenses
+        .into_iter()
+        .map(|license| license.into())
+        .collect();
+
     SbomPackage {
         id: row.id,
         name: row.name,
@@ -639,7 +651,7 @@ fn package_from_row(row: PackageCatcher) -> SbomPackage {
         version: row.version,
         purl,
         cpe,
-        licenses: row.licenses,
+        licenses,
     }
 }
 

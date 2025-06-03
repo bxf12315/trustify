@@ -60,8 +60,8 @@ async fn get_packages_sbom_by_query(ctx: &TrustifyContext) -> Result<(), anyhow:
                 ],
                 "cpe": [],
                 "licenses": [
-                    {"license_type": 0, "license_name": "EPL-1.0"},
-                    {"license_type": 0, "license_name": "GNU Lesser General Public License"}
+                    {"license_type": "Declared", "license_name": "EPL-1.0"},
+                    {"license_type": "Declared", "license_name": "GNU Lesser General Public License"}
                 ]
             }
         ],
@@ -97,7 +97,7 @@ async fn get_packages_sbom_by_query(ctx: &TrustifyContext) -> Result<(), anyhow:
                 ],
                 "cpe": [],
                 "licenses": [
-                    {"license_type": 0, "license_name": "EPL-1.0"}
+                    {"license_type": "Declared", "license_name": "EPL-1.0"}
                 ]
             }
         ],
@@ -139,8 +139,8 @@ async fn get_packages_sbom_by_query(ctx: &TrustifyContext) -> Result<(), anyhow:
                 ],
                 "cpe": [],
                 "licenses": [
-                    {"license_type": 0, "license_name": "MIT"},
-                    {"license_type": 1, "license_name": "MIT"}
+                    {"license_type": "Declared", "license_name": "MIT"},
+                    {"license_type": "Concluded", "license_name": "MIT"}
                 ]
             },
             {
@@ -174,8 +174,8 @@ async fn get_packages_sbom_by_query(ctx: &TrustifyContext) -> Result<(), anyhow:
                     "cpe:/a:redhat:satellite:6.13:*:el8:*"
                 ],
                 "licenses": [
-                    {"license_type": 0, "license_name": "MIT"},
-                    {"license_type": 1, "license_name": "MIT"}
+                    {"license_type": "Declared", "license_name": "MIT"},
+                    {"license_type": "Concluded", "license_name": "MIT"}
                 ]
             }
         ],

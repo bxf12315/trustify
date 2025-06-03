@@ -3,17 +3,19 @@ pub mod raw_sql;
 
 use super::service::SbomService;
 use crate::{
-    Error, purl::model::summary::purl::PurlSummary, source_document::model::SourceDocument,
+    Error, purl::model::summary::purl::PurlSummary, sbom::service::sbom::LicenseBasicInfo,
+    source_document::model::SourceDocument,
 };
 use async_graphql::SimpleObject;
-use sea_orm::FromJsonQueryResult;
 use sea_orm::{ConnectionTrait, ModelTrait, PaginatorTrait, prelude::Uuid};
+use sea_query::FromValueTuple;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use tracing::instrument;
 use trustify_common::{cpe::Cpe, model::Paginated, purl::Purl};
 use trustify_entity::{
-    labels::Labels, relationship::Relationship, sbom, sbom_node, sbom_package, source_document,
+    labels::Labels, relationship::Relationship, sbom, sbom_node, sbom_package,
+    sbom_package_license::LicenseCategory, source_document,
 };
 use utoipa::ToSchema;
 
@@ -119,15 +121,23 @@ pub struct SbomPackage {
     /// CPEs identifying the package
     pub cpe: Vec<String>,
     /// License info
-    pub licenses: Vec<LicenseBasicInfo>,
+    #[graphql(skip)]
+    pub licenses: Vec<LicenseInfo>,
 }
 
-#[derive(
-    Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema, SimpleObject, FromJsonQueryResult,
-)]
-pub struct LicenseBasicInfo {
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+pub struct LicenseInfo {
     pub license_name: String,
-    pub license_type: i32,
+    pub license_type: LicenseCategory,
+}
+
+impl From<LicenseBasicInfo> for LicenseInfo {
+    fn from(license_basic_info: LicenseBasicInfo) -> Self {
+        LicenseInfo {
+            license_name: license_basic_info.license_name,
+            license_type: LicenseCategory::from_value_tuple(license_basic_info.license_type),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]

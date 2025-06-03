@@ -3677,7 +3677,12 @@ components:
       type: object
       additionalProperties:
         type: string
-    LicenseBasicInfo:
+    LicenseCategory:
+      type: string
+      enum:
+      - Declared
+      - Concluded
+    LicenseInfo:
       type: object
       required:
       - license_name
@@ -3686,8 +3691,7 @@ components:
         license_name:
           type: string
         license_type:
-          type: integer
-          format: int32
+          $ref: '#/components/schemas/LicenseCategory'
     LicenseSummary:
       type: object
       required:
@@ -4086,7 +4090,7 @@ components:
               licenses:
                 type: array
                 items:
-                  $ref: '#/components/schemas/LicenseBasicInfo'
+                  $ref: '#/components/schemas/LicenseInfo'
                 description: License info
               name:
                 type: string
@@ -4632,7 +4636,7 @@ components:
         licenses:
           type: array
           items:
-            $ref: '#/components/schemas/LicenseBasicInfo'
+            $ref: '#/components/schemas/LicenseInfo'
           description: License info
         name:
           type: string
