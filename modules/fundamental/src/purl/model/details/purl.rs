@@ -108,7 +108,6 @@ impl PurlDetails {
         .await?;
 
         let purl_license_results: Vec<PurlLicenseResult> = sbom_package_purl_ref::Entity::find()
-            .distinct()
             .select_only()
             .select_column(sbom_package::Column::SbomId)
             .select_column_as(license::Column::Text, "license_name")
@@ -129,8 +128,15 @@ impl PurlDetails {
 
         let mut purl_license_info = Vec::new();
         let mut license_ref_mapping = Vec::new();
+        let mut last_sbom_id: Option<Uuid> = None;
 
         for plr in purl_license_results {
+            if last_sbom_id.is_some() && last_sbom_id != Some(plr.sbom_id) {
+                continue;
+            }
+
+            last_sbom_id = Some(plr.sbom_id);
+
             let licensing_infos = SbomService::get_licensing_infos(tx, plr.sbom_id).await?;
             extract_license_ref_mappings(
                 plr.license_name.as_str(),

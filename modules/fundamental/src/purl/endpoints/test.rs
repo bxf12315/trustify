@@ -3,6 +3,7 @@ use crate::purl::model::summary::base_purl::BasePurlSummary;
 use crate::purl::model::summary::purl::PurlSummary;
 use crate::test::caller;
 use actix_web::test::TestRequest;
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde_json::{Value, json};
 use std::str::FromStr;
 use test_context::test_context;
@@ -10,6 +11,7 @@ use test_log::test;
 use trustify_common::db::Database;
 use trustify_common::model::PaginatedResults;
 use trustify_common::purl::Purl;
+use trustify_entity::licensing_infos;
 use trustify_module_ingestor::graph::Graph;
 use trustify_test_context::{TrustifyContext, call::CallService, subset::ContainsSubset};
 use urlencoding::encode;
@@ -241,6 +243,99 @@ async fn purl_filter_queries(ctx: &TrustifyContext) -> Result<(), anyhow::Error>
         query(each).await;
     }
 
+    Ok(())
+}
+
+#[test_context(TrustifyContext)]
+#[test(actix_web::test)]
+async fn test_purl_license_details_sboms(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
+    let app = caller(ctx).await?;
+    let rhel88_id = ctx
+        .ingest_document("spdx/license/rhel-8.8.0.json.bz2")
+        .await?
+        .id
+        .to_string();
+
+    let rhel89_id = ctx
+        .ingest_document("spdx/license/rhel-8.9.0.json.bz2")
+        .await?
+        .id
+        .to_string();
+
+    let rhel88_license_ref = licensing_infos::Entity::find()
+        .filter(licensing_infos::Column::SbomId.eq(Uuid::from_str(&rhel88_id)?))
+        .filter(licensing_infos::Column::Name.eq("GPLv2+"))
+        .one(&ctx.db)
+        .await?;
+
+    let rhel89_license_ref = licensing_infos::Entity::find()
+        .filter(licensing_infos::Column::SbomId.eq(Uuid::from_str(&rhel89_id)?))
+        .filter(licensing_infos::Column::Name.eq("GPLv2+"))
+        .one(&ctx.db)
+        .await?;
+    if let Some(lf) = rhel88_license_ref {
+        assert_eq!("GPLv2+", lf.name);
+        assert_eq!("LicenseRef-3", lf.license_id);
+    } else {
+        panic!("Cannot find the corresponding license ref.");
+    }
+    if let Some(lf) = rhel89_license_ref {
+        assert_eq!("GPLv2+", lf.name);
+        assert_eq!("LicenseRef-0", lf.license_id);
+    } else {
+        panic!("Cannot find the corresponding license ref.");
+    }
+
+    let uri = "/api/v2/purl?q=abrt-addon-ccpp-debuginfo";
+    let request = TestRequest::get().uri(uri).to_request();
+    let response: PaginatedResults<PurlSummary> = app.call_and_read_body_json(request).await;
+    assert_eq!(5, response.items.len());
+    let purl = response
+        .items
+        .iter()
+        .filter(|it| it.head.purl.qualifiers.get("arch") == Some(&"aarch64".to_string()))
+        .collect::<Vec<_>>();
+
+    let uuid = purl[0].head.uuid;
+
+    let uri = format!("/api/v2/purl/{uuid}");
+
+    let request = TestRequest::get().uri(&uri).to_request();
+    let response: Value = app.call_and_read_body_json(request).await;
+
+    let expected_result = json!(
+            {
+      "uuid": "063146ab-62e8-5cef-8fbb-0e4efb926169",
+      "purl": "pkg:rpm/redhat/abrt-addon-ccpp-debuginfo@2.10.9-24.el8?arch=aarch64",
+      "version": {
+        "uuid": "a1dbf716-d42c-54dd-abb5-8fe9f6d64119",
+        "purl": "pkg:rpm/redhat/abrt-addon-ccpp-debuginfo@2.10.9-24.el8",
+        "version": "2.10.9-24.el8"
+      },
+      "base": {
+        "uuid": "ed16a1fe-ec67-5805-ae58-ceee0009bced",
+        "purl": "pkg:rpm/redhat/abrt-addon-ccpp-debuginfo"
+      },
+      "advisories": [],
+      "licenses": [
+        {
+          "license_name": "NOASSERTION",
+          "license_type": "concluded"
+        },
+        {
+          "license_name": "LicenseRef-3",
+          "license_type": "declared"
+        }
+      ],
+      "licenses_ref_mapping": [
+        {
+          "license_id": "LicenseRef-3",
+          "license_name": "GPLv2+"
+        }
+      ]
+    }
+        );
+    assert!(expected_result.contains_subset(response.clone()));
     Ok(())
 }
 
