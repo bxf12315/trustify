@@ -1,12 +1,17 @@
 use crate::{
+    common::test::{
+        Group, GroupRef, UpdateAssignments, create_groups, locate_id, read_assignments,
+        resolve_group_refs,
+    },
     sbom::model::{SbomPackage, SbomSummary},
     test::{caller, label::Api},
 };
 use actix_http::StatusCode;
-use actix_web::test::TestRequest;
+use actix_web::test::{TestRequest, read_body};
 use flate2::bufread::GzDecoder;
+use rstest::rstest;
 use serde_json::{Value, json};
-use std::{io::Read, str::FromStr};
+use std::{collections::HashMap, io::Read, str::FromStr};
 use test_context::test_context;
 use test_log::test;
 use trustify_common::{id::Id, model::PaginatedResults};
@@ -27,7 +32,7 @@ async fn fetch_unique_licenses(ctx: &TrustifyContext) -> Result<(), anyhow::Erro
         .id
         .to_string();
 
-    let uri = format!("/api/v2/sbom/{id}/all-license-ids");
+    let uri = format!("/api/v2/sbom/urn:uuid:{id}/all-license-ids");
     let req = TestRequest::get().uri(&uri).to_request();
     let response: Value = app.call_and_read_body_json(req).await;
     let expected_result = json!([
@@ -361,7 +366,7 @@ async fn fetch_unique_licenses(ctx: &TrustifyContext) -> Result<(), anyhow::Erro
         .id
         .to_string();
 
-    let uri = format!("/api/v2/sbom/{id}/all-license-ids");
+    let uri = format!("/api/v2/sbom/urn:uuid:{id}/all-license-ids");
     let req = TestRequest::get().uri(&uri).to_request();
     let response: Value = app.call_and_read_body_json(req).await;
     let expected_result = json!([
@@ -445,7 +450,7 @@ async fn fetch_unique_licenses(ctx: &TrustifyContext) -> Result<(), anyhow::Erro
         .await?
         .id
         .to_string();
-    let uri = format!("/api/v2/sbom/{id}/all-license-ids");
+    let uri = format!("/api/v2/sbom/urn:uuid:{id}/all-license-ids");
     let req = TestRequest::get().uri(&uri).to_request();
     let response: Value = app.call_and_read_body_json(req).await;
     let expected_result = json!([
@@ -582,7 +587,10 @@ async fn get_packages_sbom_by_query(ctx: &TrustifyContext) -> Result<(), anyhow:
         .to_string();
 
     async fn query_value(app: &impl CallService, id: &str, q: &str) -> Value {
-        let uri = format!("/api/v2/sbom/{id}/packages?q={}", urlencoding::encode(q));
+        let uri = format!(
+            "/api/v2/sbom/urn:uuid:{id}/packages?q={}",
+            urlencoding::encode(q)
+        );
         let req = TestRequest::get().uri(&uri).to_request();
         app.call_and_read_body_json(req).await
     }
@@ -976,7 +984,7 @@ async fn license_export(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
         .id
         .to_string();
 
-    let uri = format!("/api/v2/sbom/{id}/license-export");
+    let uri = format!("/api/v2/sbom/urn:uuid:{id}/license-export");
     let req = TestRequest::get().uri(&uri).to_request();
     let response = app.call_service(req).await;
 
@@ -1013,7 +1021,73 @@ async fn upload(ctx: &TrustifyContext) -> anyhow::Result<()> {
     assert_eq!(response.status(), StatusCode::CREATED);
     let result: IngestResult = actix_web::test::read_body_json(response).await;
     log::debug!("ID: {result:?}");
-    assert!(matches!(result.id, Id::Uuid(_)));
+
+    Ok(())
+}
+
+#[test_context(TrustifyContext)]
+#[rstest]
+#[case::single_group([GroupRef::ByName(&["Group 1"])], StatusCode::CREATED, 1)]
+#[case::multiple_groups([GroupRef::ByName(&["Group 1"]), GroupRef::ByName(&["Group 2"])], StatusCode::CREATED, 2)]
+#[case::invalid_uuid([GroupRef::ById("not-a-uuid")], StatusCode::BAD_REQUEST, 0)]
+#[case::non_existent([GroupRef::ById("00000000-0000-0000-0000-000000000000")], StatusCode::BAD_REQUEST, 0)]
+#[test_log::test(actix_web::test)]
+async fn upload_with_groups(
+    ctx: &TrustifyContext,
+    #[case] groups: impl IntoIterator<Item = GroupRef>,
+    #[case] expected_status: StatusCode,
+    #[case] expected_assignments: usize,
+) -> anyhow::Result<()> {
+    let app = caller(ctx).await?;
+
+    let groups = Vec::from_iter(groups);
+
+    let group_paths: Vec<&[&str]> = groups
+        .iter()
+        .filter_map(|g| match g {
+            GroupRef::ByName(n) => Some(*n),
+            _ => None,
+        })
+        .collect();
+
+    fn build_groups(paths: &[&[&str]]) -> Vec<Group> {
+        let mut map: HashMap<&str, Vec<&[&str]>> = HashMap::new();
+        for path in paths {
+            if let Some((&first, rest)) = path.split_first() {
+                if !rest.is_empty() {
+                    map.entry(first).or_default().push(rest);
+                } else {
+                    map.entry(first).or_default();
+                }
+            }
+        }
+        map.into_iter()
+            .map(|(name, children)| {
+                let mut g = Group::new(name);
+                g.children = build_groups(&children);
+                g
+            })
+            .collect()
+    }
+
+    let ids = create_groups(&app, build_groups(&group_paths)).await?;
+
+    let query = resolve_group_refs(&ids, groups);
+    let uri = format!("/api/v2/sbom?{query}");
+    let request = TestRequest::post()
+        .uri(&uri)
+        .set_payload(document_bytes("quarkus-bom-2.13.8.Final-redhat-00004.json").await?)
+        .to_request();
+
+    let response = app.call_service(request).await;
+    assert_eq!(response.status(), expected_status);
+
+    if expected_status == StatusCode::CREATED {
+        let result: IngestResult = actix_web::test::read_body_json(response).await;
+        let sbom_id = result.id.strip_prefix("urn:uuid:").unwrap();
+        let assignments = read_assignments(&app, sbom_id).await?;
+        assert_eq!(assignments.group_ids.len(), expected_assignments);
+    }
 
     Ok(())
 }
@@ -1027,13 +1101,13 @@ async fn get_sbom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
         .await?
         .id
         .to_string();
-    let uri = format!("/api/v2/sbom/{id}");
+    let uri = format!("/api/v2/sbom/urn:uuid:{id}");
     let req = TestRequest::get().uri(&uri).to_request();
     let sbom: Value = app.call_and_read_body_json(req).await;
     log::debug!("{sbom:#?}");
 
     // assert expected fields
-    assert_eq!(sbom["id"], id);
+    assert_eq!(sbom["id"], format!("urn:uuid:{id}"));
     assert_eq!(sbom["number_of_packages"], 1053);
 
     Ok(())
@@ -1050,7 +1124,7 @@ async fn filter_packages(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
         .to_string();
 
     async fn query(app: &impl CallService, id: &str, q: &str) -> PaginatedResults<SbomPackage> {
-        let uri = format!("/api/v2/sbom/{id}/packages?q={}", encode(q));
+        let uri = format!("/api/v2/sbom/urn:uuid:{id}/packages?q={}", encode(q));
         let req = TestRequest::get().uri(&uri).to_request();
         app.call_and_read_body_json(req).await
     }
@@ -1136,7 +1210,7 @@ async fn delete_sbom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
     let response = app
         .call_service(
             TestRequest::delete()
-                .uri(&format!("/api/v2/sbom/{}", result.id.clone()))
+                .uri(&format!("/api/v2/sbom/urn:uuid:{}", result.id.clone()))
                 .to_request(),
         )
         .await;
@@ -1147,13 +1221,13 @@ async fn delete_sbom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
 
     // We get the old sbom back when a delete succeeds
     let doc: Value = actix_web::test::read_body_json(response).await;
-    assert_eq!(doc["id"], result.id.to_string().as_ref());
+    assert_eq!(doc["id"], format!("urn:uuid:{}", result.id));
 
     // If we try again, we should get a 404 since it was deleted.
     let response = app
         .call_service(
             TestRequest::delete()
-                .uri(&format!("/api/v2/sbom/{}", result.id.clone()))
+                .uri(&format!("/api/v2/sbom/urn:uuid:{}", result.id.clone()))
                 .to_request(),
         )
         .await;
@@ -1175,11 +1249,11 @@ async fn download_sbom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
     let id = result.id.to_string();
 
     let req = TestRequest::get()
-        .uri(&format!("/api/v2/sbom/{id}"))
+        .uri(&format!("/api/v2/sbom/urn:uuid:{id}"))
         .to_request();
 
     let sbom = app.call_and_read_body_json::<SbomSummary>(req).await;
-    assert_eq!(Id::Uuid(sbom.head.id), result.id);
+    assert_eq!(sbom.head.id.to_string(), result.id);
 
     let doc = sbom.source_document;
 
@@ -1196,7 +1270,7 @@ async fn download_sbom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
 
     // Verify we can download by uuid
     let req = TestRequest::get()
-        .uri(&format!("/api/v2/sbom/{id}/download"))
+        .uri(&format!("/api/v2/sbom/urn:uuid:{id}/download"))
         .to_request();
     let body = app.call_and_read_body(req).await;
     assert_eq!(bytes, body);
@@ -1220,7 +1294,7 @@ async fn get_advisories(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
     let v: Value = app
         .call_and_read_body_json(
             TestRequest::get()
-                .uri(&format!("/api/v2/sbom/{id}/advisory"))
+                .uri(&format!("/api/v2/sbom/urn:uuid:{id}/advisory"))
                 .to_request(),
         )
         .await;
@@ -1256,7 +1330,7 @@ async fn get_advisories_with_deprecated_filtering(
     let v: Value = app
         .call_and_read_body_json(
             TestRequest::get()
-                .uri(&format!("/api/v2/sbom/{id}/advisory"))
+                .uri(&format!("/api/v2/sbom/urn:uuid:{id}/advisory"))
                 .to_request(),
         )
         .await;
@@ -1275,7 +1349,7 @@ async fn get_advisories_with_deprecated_filtering(
     let v: Value = app
         .call_and_read_body_json(
             TestRequest::get()
-                .uri(&format!("/api/v2/sbom/{id}/advisory"))
+                .uri(&format!("/api/v2/sbom/urn:uuid:{id}/advisory"))
                 .to_request(),
         )
         .await;
@@ -1562,12 +1636,20 @@ async fn all_labels(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
 #[test(actix_web::test)]
 async fn get_cbom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
     let app = caller(ctx).await?;
-    let id = ctx
-        .ingest_document("cyclonedx/cryptographic/cbom.json")
-        .await?
-        .id
-        .to_string();
+
+    // First upload it via the normal SBOM endpoint
+    let request = TestRequest::post()
+        .uri("/api/v2/sbom")
+        .set_payload(document_bytes("cyclonedx/cryptographic/keycloak-cbom.json").await?)
+        .to_request();
+    let response = app.call_service(request).await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let result: IngestResult = actix_web::test::read_body_json(response).await;
+
+    // Now fetch the AIBOM we just uploaded by its id
+    let id = result.id.to_string();
     let uri = format!("/api/v2/sbom/{id}");
+
     let req = TestRequest::get().uri(&uri).to_request();
     let sbom: Value = app.call_and_read_body_json(req).await;
     log::debug!("{sbom:#?}");
@@ -1576,9 +1658,9 @@ async fn get_cbom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
     assert_eq!(sbom["id"], id);
     assert_eq!(
         sbom["document_id"],
-        "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79/1"
+        "urn:uuid:eff8469d-f033-44a5-a53d-f938e6842e58/1"
     );
-    assert_eq!(sbom["number_of_packages"], 3);
+    assert_eq!(sbom["number_of_packages"], 0);
     let labels = sbom["labels"].as_object().unwrap();
     assert_eq!(labels["kind"], "cbom");
     assert_eq!(labels["type"], "cyclonedx");
@@ -1588,39 +1670,9 @@ async fn get_cbom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
     let response: Value = app.call_and_read_body_json(req).await;
     log::info!("{:#}", json!(response));
     let expected_result = json!({
-    "items": [
-      {
-        "id": "acme-application",
-        "name": "Acme Application",
-        "group": null,
-        "version": "1.0",
-        "purl": [],
-        "cpe": [],
-        "licenses": [],
-        "licenses_ref_mapping": []
-      },
-      {
-        "id": "crypto-library",
-        "name": "Crypto library",
-        "group": null,
-        "version": "1.0.0",
-        "purl": [],
-        "cpe": [],
-        "licenses": [],
-        "licenses_ref_mapping": []
-      },
-      {
-        "id": "some-library",
-        "name": "Some library",
-        "group": null,
-        "version": "1.0.0",
-        "purl": [],
-        "cpe": [],
-        "licenses": [],
-        "licenses_ref_mapping": []
-      }
-    ],
-    "total": 3 });
+      "items": [],
+      "total": 0
+    });
     assert!(expected_result.contains_subset(response.clone()));
     Ok(())
 }
@@ -1629,11 +1681,20 @@ async fn get_cbom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
 #[test(actix_web::test)]
 async fn get_aibom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
     let app = caller(ctx).await?;
-    let id = ctx
-        .ingest_document("cyclonedx/ai/ibm-granite_granite-docling-258M_aibom.json")
-        .await?
-        .id
-        .to_string();
+
+    // First upload it via the normal SBOM endpoint
+    let request = TestRequest::post()
+        .uri("/api/v2/sbom")
+        .set_payload(
+            document_bytes("cyclonedx/ai/ibm-granite_granite-docling-258M_aibom.json").await?,
+        )
+        .to_request();
+    let response = app.call_service(request).await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let result: IngestResult = actix_web::test::read_body_json(response).await;
+
+    // Now fetch the AIBOM we just uploaded by its id
+    let id = result.id.to_string();
     let uri = format!("/api/v2/sbom/{id}");
     let req = TestRequest::get().uri(&uri).to_request();
     let sbom: Value = app.call_and_read_body_json(req).await;
@@ -1694,6 +1755,177 @@ async fn get_aibom(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
         response["items"][0]["described_by"][0]["id"],
         "pkg:generic/ibm-granite%2Fgranite-docling-258M@1.0"
     );
+
+    Ok(())
+}
+
+#[test_context(TrustifyContext)]
+#[rstest]
+#[case::no_filter([], 3)]
+#[case::group1([GroupRef::ByName(&["Group 1"])], 2)]
+#[case::group2([GroupRef::ByName(&["Group 2"])], 1)]
+#[case::both_groups([GroupRef::ByName(&["Group 1"]), GroupRef::ByName(&["Group 2"])], 2)]
+#[case::non_existent([GroupRef::ById("00000000-0000-0000-0000-000000000000")], 0)]
+#[case::malformed([GroupRef::ById("not-a-uuid")], 0)]
+#[case::malformed_and_group1([GroupRef::ById("not-a-uuid"), GroupRef::ByName(&["Group 1"])], 2)]
+#[test_log::test(actix_web::test)]
+async fn filter_sboms_by_group(
+    ctx: &TrustifyContext,
+    #[case] groups: impl IntoIterator<Item = GroupRef>,
+    #[case] expected_total: u64,
+) -> Result<(), anyhow::Error> {
+    let app = caller(ctx).await?;
+
+    let ids = create_groups(&app, vec![Group::new("Group 1"), Group::new("Group 2")]).await?;
+
+    let sbom1 = ctx
+        .ingest_document("zookeeper-3.9.2-cyclonedx.json")
+        .await?;
+    let sbom2 = ctx
+        .ingest_document("quarkus-bom-2.13.8.Final-redhat-00004.json")
+        .await?;
+    let _sbom3 = ctx.ingest_document("ubi9-9.2-755.1697625012.json").await?;
+
+    UpdateAssignments::new(&sbom1.id)
+        .group_ids(vec![locate_id(&ids, ["Group 1"])])
+        .execute(&app)
+        .await?;
+
+    UpdateAssignments::new(&sbom2.id)
+        .group_ids(vec![
+            locate_id(&ids, ["Group 1"]),
+            locate_id(&ids, ["Group 2"]),
+        ])
+        .execute(&app)
+        .await?;
+
+    let query = resolve_group_refs(&ids, groups);
+    let uri = format!("/api/v2/sbom?{query}");
+    log::info!("URI: {uri}");
+    let req = TestRequest::get().uri(&uri).to_request();
+
+    let result = app.call_service(req).await;
+    let status = result.status();
+    let body = read_body(result).await;
+
+    log::info!("Body: {:?}", str::from_utf8(&body));
+
+    assert_eq!(StatusCode::OK, status);
+
+    let result: PaginatedResults<Value> = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(result.total, expected_total);
+
+    Ok(())
+}
+
+#[test_context(TrustifyContext)]
+#[test(actix_web::test)]
+async fn packages_by_hash(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
+    let app = caller(ctx).await?;
+    let result = ctx
+        .ingest_document("zookeeper-3.9.2-cyclonedx.json")
+        .await?;
+    let id = result.id.to_string();
+
+    // Fetch summary to get hashes
+    let req = TestRequest::get()
+        .uri(&format!("/api/v2/sbom/urn:uuid:{id}"))
+        .to_request();
+    let sbom: Value = app.call_and_read_body_json(req).await;
+    let sha256 = sbom["sha256"].as_str().unwrap();
+
+    // Fetch packages by UUID
+    let req = TestRequest::get()
+        .uri(&format!("/api/v2/sbom/urn:uuid:{id}/packages"))
+        .to_request();
+    let by_uuid: Value = app.call_and_read_body_json(req).await;
+
+    // Fetch packages by SHA-256
+    let req = TestRequest::get()
+        .uri(&format!("/api/v2/sbom/{sha256}/packages"))
+        .to_request();
+    let by_hash: Value = app.call_and_read_body_json(req).await;
+
+    // Results should match
+    assert_eq!(by_uuid["total"], by_hash["total"]);
+    assert!(by_uuid["total"].as_u64().unwrap() > 0);
+
+    // Non-existent hash -> 404
+    let req = TestRequest::get()
+        .uri("/api/v2/sbom/sha256:0000000000000000000000000000000000000000000000000000000000000000/packages")
+        .to_request();
+    let response = app.call_service(req).await;
+    assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+    // Invalid identifier (no prefix) -> 400
+    let req = TestRequest::get()
+        .uri("/api/v2/sbom/not-an-id/packages")
+        .to_request();
+    let response = app.call_service(req).await;
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+    // Unsupported prefix -> 400
+    let req = TestRequest::get()
+        .uri("/api/v2/sbom/sha123:abcd/packages")
+        .to_request();
+    let response = app.call_service(req).await;
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+    Ok(())
+}
+
+#[test_context(TrustifyContext)]
+#[test(actix_web::test)]
+async fn related_by_hash(ctx: &TrustifyContext) -> Result<(), anyhow::Error> {
+    let app = caller(ctx).await?;
+    let result = ctx
+        .ingest_document("zookeeper-3.9.2-cyclonedx.json")
+        .await?;
+    let id = result.id.to_string();
+
+    // Fetch summary to get hashes
+    let req = TestRequest::get()
+        .uri(&format!("/api/v2/sbom/urn:uuid:{id}"))
+        .to_request();
+    let sbom: Value = app.call_and_read_body_json(req).await;
+    let sha256 = sbom["sha256"].as_str().unwrap();
+
+    // Fetch related by UUID
+    let req = TestRequest::get()
+        .uri(&format!("/api/v2/sbom/urn:uuid:{id}/related"))
+        .to_request();
+    let by_uuid: Value = app.call_and_read_body_json(req).await;
+
+    // Fetch related by SHA-256
+    let req = TestRequest::get()
+        .uri(&format!("/api/v2/sbom/{sha256}/related"))
+        .to_request();
+    let by_hash: Value = app.call_and_read_body_json(req).await;
+
+    // Results should match
+    assert_eq!(by_uuid["total"], by_hash["total"]);
+
+    // Non-existent hash -> 404
+    let req = TestRequest::get()
+        .uri("/api/v2/sbom/sha256:0000000000000000000000000000000000000000000000000000000000000000/related")
+        .to_request();
+    let response = app.call_service(req).await;
+    assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+    // Invalid identifier (no prefix) -> 400
+    let req = TestRequest::get()
+        .uri("/api/v2/sbom/not-an-id/related")
+        .to_request();
+    let response = app.call_service(req).await;
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+    // Unsupported prefix -> 400
+    let req = TestRequest::get()
+        .uri("/api/v2/sbom/sha123:abcd/related")
+        .to_request();
+    let response = app.call_service(req).await;
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
 
     Ok(())
 }

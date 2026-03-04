@@ -43,6 +43,8 @@ trustify sbom duplicates delete
   - [`sbom delete`](#sbom-delete)
   - [`sbom duplicates find`](#sbom-duplicates-find)
   - [`sbom duplicates delete`](#sbom-duplicates-delete)
+  - [`sbom prune`](#sbom-prune)
+
 - [API Reference](#api-reference)
 - [License](#license)
 
@@ -174,4 +176,21 @@ trustify sbom duplicates delete --dry-run       # Preview what will be deleted
 trustify sbom duplicates delete                 # Delete all duplicates
 trustify sbom duplicates delete -j 16           # Faster with 16 concurrent requests
 trustify sbom duplicates delete --input out.json # Use custom input file
+```
+
+---
+
+### `sbom prune`
+
+Prune SBOMs based on various criteria like age, labels, or keeping only the latest versions. Always preview with `--dry-run` first!
+
+```bash
+trustify sbom prune --dry-run                                # Preview what will be pruned
+trustify sbom prune --older-than 90                          # Delete SBOMs older than 90 days
+trustify sbom prune --published-before 2026-01-15T10:30:45Z  # Delete SBOMs published before date
+trustify sbom prune --label type=spdx --label importer=run   # Delete SBOMs with specific labels
+trustify sbom prune --keep-latest 5                          # Keep only 5 most recent per document ID
+trustify sbom prune --query "name=my-app"                    # Custom query filter
+trustify sbom prune --limit 1000                             # Limit results and increase concurrency
+trustify sbom prune --output results.json --quiet            # Save results to file, suppress output
 ```
