@@ -16,8 +16,8 @@ use crate::{
     },
     sbom::{
         model::{
-            SbomExternalPackageReference, SbomNodeReference, SbomPackage, SbomPackageRelation,
-            SbomSummary, Which, details::SbomAdvisory,
+            SbomExternalPackageReference, SbomLookup, SbomNodeReference, SbomPackage,
+            SbomPackageRelation, SbomSummary, Which, details::SbomAdvisory,
         },
         service::{SbomService, sbom::FetchOptions},
     },
@@ -59,6 +59,7 @@ pub fn configure(
         .app_data(web::Data::new(sbom_service))
         .app_data(web::Data::new(Config { upload_limit }))
         .service(all)
+        .service(lookup)
         .service(all_related)
         .service(count_related)
         .service(get)
@@ -191,6 +192,36 @@ pub async fn all(
 
     let result = fetch.fetch_sboms(search, paginated, options, &tx).await?;
 
+    Ok(HttpResponse::Ok().json(result))
+}
+
+/// Lightweight SBOM lookup returning only SBOM ID and document ID.
+///
+/// This endpoint joins only the `sbom` and `source_document` tables,
+/// avoiding the expensive joins (licenses, PURLs, CPEs, packages) used
+/// by the full `listSboms` endpoint. Designed for CLI tools that need
+/// efficient bulk lookups for operations like SBOM pruning/deletion.
+#[utoipa::path(
+    tag = "sbom",
+    operation_id = "lookupSboms",
+    params(
+        Query,
+        Paginated,
+    ),
+    responses(
+        (status = 200, description = "Matching SBOMs (lightweight)", body = PaginatedResults<SbomLookup>),
+    ),
+)]
+#[get("/v2/sbom/lookup")]
+pub async fn lookup(
+    fetch: web::Data<SbomService>,
+    db: web::Data<Database>,
+    web::Query(search): web::Query<Query>,
+    web::Query(paginated): web::Query<Paginated>,
+    _: Require<ReadSbom>,
+) -> actix_web::Result<impl Responder> {
+    let tx = db.begin_read().await?;
+    let result = fetch.fetch_sbom_lookups(search, paginated, &tx).await?;
     Ok(HttpResponse::Ok().json(result))
 }
 
